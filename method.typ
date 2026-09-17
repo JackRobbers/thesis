@@ -69,41 +69,44 @@
   )
 ]
 
+// #slide()[
+//   The goal is to be able to uniquely distinguish each device.
+//   \
+//   #columns(2)[
+//     #text(size: 30pt,align(center + horizon)[
+//       // absolute overlap: \
+
+//       distinguishability \
+//       // $"width of overlapping regions" / "total width of values"$
+//       #colbreak()
+
+
+//       $"number of distinguishable devices" / "total number of devices"$
+//     ])
+//   ]
+// ]
+
 #slide()[
-  The goal is to be able to uniquely distinguish each device. 2 metrics to evalute this:
-  \
-  #columns(2)[
-    #text(size: 30pt,align(center + horizon)[
-      absolute overlap: \
+  = Method 1: by mean
 
-      $"width of overlapping regions" / "total width of values"$
-      #colbreak()
-
-      distinguishability: \
-
-      $"number of distinguishable devices" / "total number of devices"$
-    ])
-  ]
-
+  #output("profiles", item: 0)
 
 
 ]
 
 #slide()[
-  = Method 1: by mean
+  = Mean, zoomed in
 
-  #figure(output("profiles", item: 0), caption: "Y axis has no meaning, just to better show overlaps")
+  #output("profiles", item: 1)
 
-  Most devices are low powered, < 
 
 ]
 
 #slide()[
   = Method 2: by std
 
-  #output("profiles", item: 1)
+  #output("profiles", item: 2)
 
-  Std overlaps more than mean.
 
 ]
 
@@ -114,41 +117,52 @@
 ]
 
 #slide()[
+  = Evaluation:
+
+  #text(size: 30pt, output("evaluation", item: 0, format: "text/plain"))
+
+  Most devices are low powered, < 50 Watts
+
+
+  Std overlaps more than mean, which makes sense since it doesn't carry information about the actual value, just it's spread.
+]
+
+
+#slide()[
+  Test a range of values using colourmesh
+  
+]
+
+
+
+#slide()[
+  = Outlier Detection
+
+  apply this
+]
+
+
+
+#slide()[
   = Confusion Metric
+  
+  table showing how it should be classified and what actually happened
 ]
 
 #slide()[
   = Conformity Ttest
 ]
 
-#slide()[
-  = Outlier Detection
-]
+
 
 #slide()[
-  = Evaluation:
-
-  #text(size: 30pt, output("evaluation", item: 0, format: "text/plain"))
-
-
-  
-
+  Highlight some devices that are particularly bad / confusing to each other
 ]
 
-#slide()[
-  Test a range of values using colourmesh
-  
-  
-]
-
-// #slide()[
-//   Highlight some devices that are particularly bad
-// ]
-// 
 #slide()[
   = Conclusions:
 
-  Mean can actually fully distinguish this dataset, with the bins set at $s$ = 500 and $o$ = 10.
+  Mean cannot actually fully distinguish this dataset, with the bins set at $s$ = 400 and $o$ = 10. I had a bug last week
 
   Std cannot, which makes sense since it only measures the spread, no the actual value of result
 ]
