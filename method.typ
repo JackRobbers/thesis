@@ -10,7 +10,7 @@
 
 #show: rectangles-theme.with(
   aspect-ratio: "16-9",
-  title: "Method",
+  title: "Week 1 Progress",
   authors: "Jack Robbers",
   short-title: none, // The title that is displayed in the footer. Defaults to `[#title – #subtitle]`.
   short-authors: none, // The authors that are displayed in the footer. Defaults to authors, possibly connected with commas.
@@ -21,6 +21,14 @@
 )
 
 #title-slide()
+
+#slide(title: "Work this week")[
+  - Found a major bug with windowing code
+  - Meant that conclusion about mean being good enough was incorrect
+  - Made graphs show all the points
+  - Implemented mean + std metric (and machinery for combining any metrics)
+  - Got quite close with comparing different window sizes and offsets, will present next week
+]
 
 #slide()[
   Bins of size $s$ samples, offset by $o$ samples from the previous bin. $o$ could be less than $s$.
@@ -119,6 +127,8 @@
 #slide()[
   = Evaluation:
 
+  Number of fully distinguishable devices:
+
   #text(size: 30pt, output("evaluation", item: 0, format: "text/plain"))
 
   Most devices are low powered, < 50 Watts
@@ -141,7 +151,9 @@
   apply this
 ]
 
-
+#slide(title: "Application to unseen data")[
+  Blocked by 
+]
 
 #slide()[
   = Confusion Metric
@@ -150,10 +162,10 @@
 ]
 
 #slide()[
-  = Conformity Ttest
+  = Conformity Test stats
+
+
 ]
-
-
 
 #slide()[
   Highlight some devices that are particularly bad / confusing to each other
