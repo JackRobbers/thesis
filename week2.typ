@@ -4,9 +4,8 @@
 #import "@preview/numty:0.1.0" as nt
 
 #let (source, display, result, output, outputs, render, Out) = callisto.config(
-  nb: path("powerids analysis.ipynb"),
+  nb: path("analysis.ipynb"),
 )
-
 
 #show: rectangles-theme.with(
   aspect-ratio: "16-9",
@@ -25,7 +24,7 @@
 #slide(title: "Work & Updates")[
         - *Budget*: \$200 Total, I've used \$33. Way cheaper in bulk, could get 5 for \$100. #underline(text(fill: blue, link("https://au.store.tapo.com/products/mini-smart-wi-fi-socket-energy-monitoring-tapo-p110")[Store]))
         - Confusion Matrix + F1 score
-        - Testing different
+        -
         
 ]
 
@@ -41,4 +40,31 @@
         October to finalise work
 
         November to for Report + Poster
+]
+
+#slide(title: "Confusion Matrices and f score")[
+        #columns(2)[
+
+        #figure(caption: "from wikipedia", image("/assets/image-2.png", width: 70%))
+
+        #colbreak()
+
+        F1 = $(2"TP")/(2"TP" + "FP" + "FN") $
+
+        Harmonic mean of recall and precision, so each are valued equally. 
+
+        is one class vs the rest.
+        ]
+]
+
+#slide()[
+        #align(center+horizon)[
+                #output("confusion", item: 0)
+
+        ]
+]
+
+#slide()[
+        next step remove most confusing classes
+
 ]
