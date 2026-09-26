@@ -8,15 +8,16 @@
 
 
 #let render_table(label, item) = {
-  // table(..output(label, item: item).split(", "))
-  output(label, item: item, format: "text/plain")
+  // Render a table from the notebook, requires a corresponding python function to put in to the correct format
+  let t = output(label, item: item, format: "text/plain").split().map(str => str.split(","))
+  table(columns: t.at(0).len(), ..t.flatten())
 }
 
 Helloaaa
 
 #render_table("tables", 0)
 
-test
+testaaaa
 // #(..output("tables", item: 0).split(", "))
 
 // #table(..output("tables", item: 0).split(", "))

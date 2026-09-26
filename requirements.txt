@@ -1,0 +1,6 @@
+matplotlib
+pandas
+tapo
+jinja2
+ipympl
+colorhash
