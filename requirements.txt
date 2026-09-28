@@ -4,3 +4,4 @@ tapo
 jinja2
 ipympl
 colorhash
+nbdime

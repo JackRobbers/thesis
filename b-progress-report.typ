@@ -5,7 +5,7 @@
 )
 
 // TODO: criticise dataset, not specific on what devices
-
+The goal is to fully idne
 
 #let render_table(label, item) = {
   // Render a table from the notebook, requires a corresponding python function to put in to the correct format
@@ -18,6 +18,8 @@ Helloaaa
 #render_table("tables", 0)
 
 testaaaa
+
+Macro average is appropriate since we have no futher information on the data.
 // #(..output("tables", item: 0).split(", "))
 
 // #table(..output("tables", item: 0).split(", "))
