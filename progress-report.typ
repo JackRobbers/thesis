@@ -73,13 +73,72 @@ There are a number of limitations with this dataset:
 
 == Current Method
 
-Each devices data is split into two sections: 25 minutes of training data to extra classes and 12 minutes of unseen data for evaluation. The data is further split into windows of width $w$ seconds with a gap of $s$ seconds between left edges of windows. A metric is then evaluated on each of the windows.
+#figure(
+    cetz.canvas({
+      import cetz.draw: *
+
+      let box(i) = {
+        let gap = 3 * i
+        rect((gap, 0), (gap + 2, 2), name: str(i))
+      }
+      let names = ("Raw Data", "Windowing", "Apply Metric", "Classification")
+      let n = names.len()
+      for i in range(n) {
+        let gap = i * 3
+        hide(box(i))
+        if i == 0 {
+         
+          hide(line(("0.west"), ("0.west"), stroke: red))
+          for j in nt.linspace(0, 2, 100) {
+            let point = (calc.sin(j * 10000) + calc.sin(j * 121) + calc.sin(j * 2009) + 2)
+            line((), (j, point / 2))
+          }
+        } else if i == 1 {
+     
+          for j in range(2) {
+            rect((3 + j / 2, 0 + j / 8), (4.5 + j / 2, 1.8 + j / 8))
+          }
+        } else if i == 2 {
+          
+          content("2.center", text(size: 20pt, [$mu$]))
+        } else {
+          // hide(line((gap, 0), (gap, 2)))
+          for (row, x) in nt.linspace(0, 2, 7).enumerate() {
+            for (col, y) in nt.linspace(0, 2, 7).enumerate() {
+              fill(white)
+            
+              if col != 2 {
+                if (x == y) {
+                  fill(black)
+                }
+              } else if (row == 2 or row == 3 or row == 6) {
+                fill(black.lighten(50%))
+              }
+              rect((gap + x, 2.3 - y), (gap + x + 2/7 + 0.05, 2.3 - (y + 2/7 + 0.05)), stroke: 1pt)
+            }
+
+          }
+        }
+        content((rel: (0, -.4), to: str(i) + ".south"), names.at(i))
+        if i < n - 1 {
+          line((gap + 2.2, 1), (gap + 2.9, 1), mark: (end: ">", scale: 1.2, fill: black))
+        }
+      }
+      //  rect((3, 0), (5, 2), name: "window")
+      //  content((rel: (0, -.4), to: "window.south"), [Window])
+    })
+  , caption: [Method overview]
+)
+
+Each device's data is split into two sections: 25 minutes of training data to extra classes and 12 minutes of unseen data for evaluation. The data is further split into windows of width $w$ seconds with a gap of $s$ seconds between left edges of windows. A metric is then evaluated on each of the windows.
 
 For each window in the unseen data, we classify by minimising the distance to the median of the means from training. This is quite a naive approach and will not work when combining multiple metrics as median only makes sense in 1 dimension. 
 
 To evaluate the performance of the classification we compute a confusion matrix, this shows how often a device is classified as each other device. If all classes were classified correctly there would be a fully diagonal line. From this we evaluate the precision and F1 score for each class.
 
  For the overall performance of a test we evaluate the macro average F1 score, this is simply the unweighted mean of all F1 scores of each class.
+
+
 
 == Results
 
