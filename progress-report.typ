@@ -66,9 +66,9 @@ The main paper similar to my work @zhouCatchingHackersWatching2026, made their d
 
 There are a number of limitations with this dataset:
 - The idle data for the Echo Dot 3 is truncated to 1 minute of data, hence I haven't considered it in my work.
-- Exact device models or hardware revisions were not recorded. A different model of the "same" device may have different power usage characteristics 
-- Each device was recorded for a different length of time, varying but up to a few minutes. To have a consistent dataset I've truncated the data so that each device has the same length of samples as the shortest device in the dataset. With 25 minutes of training data this leaves 12 minutes of unseen data.
-- The amount of available data is relatively small. I hope to replicate my results on my own dataset.
+- Exact device models or hardware revisions were not recorded. A different model of the same device may have different power usage characteristics. 
+- Each device was recorded for a different length of time. To have a consistent dataset I've truncated the data so that each device has the same length of samples as the shortest device in the dataset. With 25 minutes of training data this leaves 12 minutes of unseen data.
+- The amount of available data is relatively small. I will replicate my results on my own dataset to address this.
 
 
 == Current Method
@@ -130,9 +130,11 @@ There are a number of limitations with this dataset:
   , caption: [Method overview]
 )
 
-Each device's data is split into two sections: 25 minutes of training data to extra classes and 12 minutes of unseen data for evaluation. The data is further split into windows of width $w$ seconds with a gap of $s$ seconds between left edges of windows. A metric is then evaluated on each of the windows.
+Each device's data is split into two sections: 25 minutes of training data to extra classes and 12 minutes of unseen data for evaluation. The data is further split into windows of width $w$ seconds with a gap of $s$ seconds between left edges of windows. 
 
-For each window in the unseen data, we classify by minimising the distance to the median of the means from training. This is quite a naive approach and will not work when combining multiple metrics as median only makes sense in 1 dimension. 
+For each window in the training data, a metric is evaluated. The median value across all windows is recorded as the unique signature of each device. Currently the only metric is the mean. In the future this could be any characteristic.
+
+For each window in the unseen data, we classify by minimising the distance to the medians for each device computed earlier. This is quite a naive approach and will not work when combining multiple metrics as median only makes sense in 1 dimension. 
 
 To evaluate the performance of the classification we compute a confusion matrix, this shows how often a device is classified as each other device. If all classes were classified correctly there would be a fully diagonal line. From this we evaluate the precision and F1 score for each class.
 
@@ -159,9 +161,9 @@ To evaluate the performance of the classification we compute a confusion matrix,
   }
  #figure(render_table(output("confusion matrix", item: 1)), caption: [Performance of device identification based on 3-min window of power usage during idle mode (sorted by precision)])
 ]
-Considering a 95% threshold, 20/32 devices will be classified correctly. This is an encouraging result for such a simple method. It is likely
+Considering a 95% threshold, 20/32 devices will be classified correctly. This is an encouraging result for such a simple method. We are only considering devices that are idle currently. 
 
-However there are a number of devices that are poorly classified. In particular the LIFX Light is never classified correctly. @lifx shows the training and unseen data for the Toshiba TV it is classified as, with the median of the training as a vertical line. All of the unseen data is much closer to the Toshiba training's median. 
+However there are a number of devices that are poorly classified. In particular the LIFX Light is never classified correctly. @lifx shows the training and unseen data for the Toshiba TV it is classified as, with the median of the training as a vertical line. All of the unseen data is much closer to the Toshiba training's median.  //@weekett shows a similar confusion for the Weekett Kettle
 
 #figure(output("confused with", item: 0), caption: [LIFX vs Toshiba TV]) <lifx>
 
@@ -187,8 +189,7 @@ The median isn't very robust. There also could be time dependent effects unaccou
   }
 #figure(render_table(output("results", item: 0)), caption: "Macro Average F1 score for a range of window sizes and shifts") <ws>
 ]
-@ws show that the amount of time between the windows $s$ does not meaningfully impact the performance, choosing a larger value will save computation time and space. However varying the window size $w$ does impact the performance, if it is too large or too small. I hypothesise this is due to a small window producing too much variance in means so the median is thrown off and the that a large window averages more data, producing a result that can be more confidently wrong.
-
+@ws shows that the amount of time between the windows $s$ does not meaningfully impact the performance, hence a larger value should be chosen to increase computational performance. However a window size $w$ that is too large or small degrades the performance. I hypothesise this is due to a small window producing more variance in means so that the median is misplaced. A large window averages more data, producing a result that can be more confidently wrong.
 
 #[  
   #set image(width: 120%)
@@ -224,27 +225,26 @@ I applied outlier removal of anything beyond 2$sigma$ (there was noting outside 
 
 = Reflection
 
-So far, I have not produced quality work and am unhappy with my progress. I want to finish this term so need to apply strategies to change this. 
-There are factors both in and out of my control. I've had some unfortunate health issues but also have not put in the time commitment need to complete an honours thesis. I can only control certain things and need to learn to work with my current abilities.
+So far, I have not produced quality work and am unhappy with my progress. I want to finish this term so need to apply strategies to change this. I've had some unfortunate health issues but also have not put in the time commitment need to complete an honours thesis. 
 
-During term 1 I completed thesis A. Early in the term I was reading papers each week and familiarising myself with the field. For the report, I hadn't done enough reading, but also didn't get everything into the report that I'd read about. I really struggle to make myself sit down and engage with the work deeply.
+During term 1 I completed thesis A. Early in the term I was reading papers each week and familiarising myself with the field. For the report, I hadn't done enough reading, but also didn't get everything into the report that I'd read about.
 
-During term 2, I was initially working on Thesis B with a similar rate to thesis A. The goal was to both produce a dataset and a method for classifying data. I forgot to enrol in Thesis B, not noticing until week 5 when this part B progress report should have been due. I clearly was not a very engaged student. Later in the term my sleep got really bad and I was needing to take 2 naps every day. I did hardly anything from week 6-10. I sought medical attention for this and began to admit to myself that I was really struggling. I got lots of tests and discovered a physical cause of some my issues and was able to sleep better.
+During term 2, I was initially working on Thesis B at a similar rate to thesis A. The goal was to both produce a dataset and a method for classifying data. I forgot to enrol in Thesis B, not noticing until week 5 when this part B progress report should have been due. I clearly was not a very engaged student. Later in the term my sleep got really bad and I was needing to take 2 naps every day. I did hardly anything from week 6-10. I sought medical attention for this and began to admit to myself that I was really struggling. I discovered a physical cause of some my issues and was able to sleep better.
 
-This is something I've struggled with throughout the later half of my degree but hasn't been as big of issue until a year-long project like this. I find myself to be very "momentum" based worker. Actually starting the work is often the hard part for me, once I start writing I can often concentrate for many hours. But I will procrastinate for a whole day before starting. It's self destructive. I get comfortable and coast along. I hasn't effectively used the resources at my disposal.
+This is something I've struggled with throughout the later half of my degree but hasn't been as big of issue until a year-long project like this. I find myself to be very "momentum" based worker. Actually starting the work is often the hard part for me, once I start writing I can often concentrate for many hours. But I will procrastinate for a whole day before starting. I haven't effectively used the resources at my disposal to combat this.
 
-In the thesis meeting prior to this report, I came with a confusion matrix that was not working because I'd broken it just beforehand. I was flustered and couldn't even read that graph correctly. This is obviously unacceptable and served as a wake up call. I committed to really spending the next few days doing my best work and submitting a draft of the thesis B report . Friday and Saturday were good, cleaning up the codebase and implementing the confusion matrix. Sunday I faltered, not getting any work done. On Monday, I didn't get anything done until 5pm but then had some good sessions completing the reflection and planning sections. On Tuesday I inserted all of my results and commentary. I hope through this report I've somewhat shown that I can complete this thesis. I've attempted to be genuinely introspective and honest with myself.
+In the thesis meeting prior to this report, I came with a confusion matrix that was not working because I'd broken it just beforehand. I was flustered and couldn't even read that graph correctly. This is obviously unacceptable and served as a wake up call. I committed to really spending the next week doing my best work and submitting a draft of the thesis B report . Friday and Saturday were good, cleaning up the codebase and implementing the confusion matrix. Sunday I faltered, not getting any work done. On Monday, I didn't get anything done until 5pm but then had some good sessions completing the reflection and planning sections. On Tuesday I inserted all of my results and commentary.
 
-This thesis has taught me many things about myself and honestly is the most challenging thing I've ever done. Steady progress is more effective than a burst. Also the setting and time around work is so important. I find the problems overwhelming, with so many directions to go in and so many things that I don't know
+This thesis has taught me many things about myself and honestly is the most challenging thing I've ever done. Steady progress is more effective than a burst. Also the setting and time around work is so important. I find the problems overwhelming, with so many directions to go in and so many things that I don't know.
 
 I have 7 weeks remaining in this thesis, and will take the following actions to ensure that I'm successful:
 
-- Finalise results by the night before the meeting. With the morning before the meeting for writing up observations and literature review. Coming to the meeting unprepared is a waste of both our time. 
-- Pomodoro technique / Time tracking. Apply study techniques to better use my time, getting started as early as I can in the day, and just getting something done will often give me lots of momentum. I've set myself a goal to complete on at least 20 hours of work on my thesis per week. This is averaged across days. I am also working \~10 hours a week. I will also use weekends if needed but aim to keep these free to recharge. 
+- Finalise results by the night before the meeting at latest. Use the morning before the meeting for writing up observations and literature review. Coming to the meeting unprepared is a waste of both our time. 
+- Pomodoro technique / Time tracking. Apply study techniques to better use my time, getting started as early as I can in the day, and just getting something done will often give me lots of momentum. I've set myself a goal to complete on at least 20 hours of work on my thesis per week. I am also working \~10 hours a week. I will use weekends if needed but aim to keep these free to recharge. 
 - Parallel working, I reached out to and spent a few sessions working next to a friend.  
 - Therapy, I've started seeing a therapist and we are working on techniques for getting things done and sleep.
 
-I'd like to apologise to Hassan for, I've likely been quiet a frustrating student to deal with and thank him for his understanding so far. In writing this report and in particular this reflection I hope to demonstrate that I can complete this.
+I'd like to apologise to Hassan, I've likely been quiet a frustrating student to deal with and thank him for his understanding so far. In writing this report I hope to demonstrate that I can complete this.
 
 
 = Plan
