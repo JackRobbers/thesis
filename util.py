@@ -404,7 +404,7 @@ class Experiment:
          [0.   1.   0.  ]
          [0.   0.   1.  ]]
         >>> exp.classes
-
+        # TODO verify that old behaviour was bugged?
 
         >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv'])
         >>> exp.classes = {exp.devices[0]: Counter([exp.devices[0], exp.devices[1]]), exp.devices[1]: Counter([])}
