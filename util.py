@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import StrEnum, Enum
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -37,25 +37,96 @@ class Metric(StrEnum):
             case _:
                 return self.value
 
+class DatumType(StrEnum):
+    TRAINING = "model"
+    TESTING = "testing"
+
+class Datum:
+    """
+    Represents a single set of data either training or testing. possibly misuing the term datum
+
+    run all windows, return metrics in the form [{'mean': value, 'std': value}], where the values are sorted
+
+    the first window takes up s samples, so there are len(data) - s samples left. each addional window uses up o spaces.
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 10, 2)
+    >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), DatumType.TRAINING).profile)
+    46
+
+    # Additonal partial windows aren't counted
+    >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 101}), DatumType.TRAINING).profile)
+    46
+
+    Non overlapping windows
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 10, 20)
+    >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), DatumType.TRAINING).profile)
+    5
+
+    >>> Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 50 + [2] * 50}), DatumType.TRAINING).profile # doctest: +NORMALIZE_WHITESPACE
+    [{<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19)}]
+
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 400, 10)
+    >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 1750}), DatumType.TRAINING).profile)
+    136
+
+    Are all the profiles the same length?
+    >>> [len(data.training.profile) for data in exp.data]
+    [111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111]
+    >>> [len(data.testing.profile) for data in exp.data]
+    [38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38]
+
+    TODO do we want non rectangular windows? are edge effects important
+    
+    # TODO fix outlier removal, maybe could be in a different function
+            # compute a mean with outliers removed, values that fall outside of 3 std
+            # mean_mean = np.mean(means)
+            # three_std = 2 * np.std(means)
+
+            # means_no_outliers = [
+            #     mean
+            #     for mean in means
+            #     if mean > mean_mean - three_std and mean < mean_mean + three_std
+            # ]
+    """
+
+    def __init__(self, data: Data, df: pd.DataFrame, type: DatumType):
+        self.data = data
+        self.df = df
+        self.type = type
+        self.profile: list[dict[Metric, float]] = []
+        for bin in range((len(self.df) - self.data.experiment.w) // self.data.experiment.s + 1):
+            window_power = self.df.iloc[bin * self.data.experiment.s : bin * self.data.experiment.s + self.data.experiment.w].power_mW / 1000
+            self.profile.append(
+                {Metric.MEAN: window_power.mean(), Metric.STD: window_power.std()}
+            )
+            
+    
+
 
 class Data:
-    def __init__(self, context, device: Device, state: State):
+    """
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10)
+    >>> [len(data.training.df) for data in exp.data]
+    [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
+
+
+    >>> [len(data.testing.df) for data in exp.data]
+    [778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778]
+    """
+
+    def __init__(self, exp: Experiment, device: Device, state: State, df: pd.DataFrame):
+        self.experiment = exp
         self.device = device
         self.state = state
-        data = pd.read_csv(
-            f"{context.path}/{device.category}/{device.dir_name}/{state}.csv",
-            parse_dates=["timestamp"],
-        )
         if device.dir_name == "nestmini2":
-            data = data.rename(columns={"power_W": "power_mW"})
+            df = df.rename(columns={"power_W": "power_mW"})
 
         split = (
             25
             * 60
             # 25 minutes of training data, gurantees at least 10 minutes of testing data
         )
-        self.training = data.iloc[:split, :]
-        self.testing = data.iloc[split:, :]
+        self.training = Datum(self, df.iloc[:split, :], DatumType.TRAINING)
+        self.testing = Datum(self, df.iloc[split:, :], DatumType.TESTING)
 
 
 def category_sort_order(cat):
@@ -79,21 +150,12 @@ class Context:
     Get all the devices and categories.
 
     Hard coded to remove echodot3 since the idle data is truncated and can't be compared
-    >>> c = Context('../PowerIDS/classifier/power_csv')
     >>> len(c.devices)
     32
 
     >>> c.categories
     ['lights', 'audio', 'camera', 'tv', 'appliance']
 
-    >>> len(c.data)
-    64
-
-    >>> all(['power_mW' in data.training.columns for data in c.data])
-    True
-
-    >>> all(['power_mW' in data.testing.columns for data in c.data])
-    True
 
     >>> c.devices[:5]
     [Antela Light, Fitop Light, LIFX Light, Lepro Light, Tapo Light]
@@ -111,16 +173,10 @@ class Context:
             ],
             key=lambda device: (category_sort_order(device.category), device.name()),
         )
-        # The global pool of data for all the states we care about
-        self.data = [
-            Data(self, device, state) for state in State for device in self.devices
-        ]
-        # truncate the testing data to the shortest one
-        least = min([len(data.testing) for data in self.data])
-        for data in self.data:
-            data.testing = data.testing.iloc[:least, :]
 
-
+    def device_from_name(self, device_name):
+        return [device for device in self.devices if device.dir_name == device_name][0]
+    
 def map_device_names(name):
     match name:
         case "appletv":
@@ -216,9 +272,9 @@ class Experiment:
     """
     Verify the new devices are seperate
 
-    >>> e = Context('../PowerIDS/classifier/power_csv')
-    >>> exp = Experiment(e, State.IDLE, [Metric.MEAN], 180, 10, )
-    >>> e.devices.pop()
+    >>> 
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, )
+    >>> c.devices.pop()
     Xiaomi Blender
     >>> len(exp.devices)
     32
@@ -226,37 +282,46 @@ class Experiment:
     >>> len(exp.data)
     32
 
-    >>> all(['power_mW' in data.training.columns for data in exp.data])
+    >>> all(['power_mW' in data.training.df.columns for data in exp.data])
     True
 
-    >>> all(['power_mW' in data.testing.columns for data in exp.data])
+    >>> all(['power_mW' in data.testing.df.columns for data in exp.data])
     True
 
     Filtering
-    >>> len(Experiment(e, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
+    >>> len(Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
     3
     """
 
     def __init__(
         self, context: Context, state: State, metrics: list[Metric], w, s, include=[]
     ):
+        if w > 600:
+            raise ValueError(w)
         self.context = context
+        self.state: State = state
         self.metrics = metrics
+        self.w: int = w
+        self.s: int = s
         if include == []:
             include = list(map(lambda device: device.dir_name, context.devices))
         self.devices = [
             device for device in context.devices if device.dir_name in include
         ]
-        self.data: list[Data] = [
-            data
-            for data in context.data
-            if (data.device.dir_name in include and data.state == state)
+
+        
+        dfs = {device: pd.read_csv(
+                    f"{self.context.path}/{device.category}/{device.dir_name}/{state}.csv",
+                    parse_dates=["timestamp"],
+                ) for device in self.devices if device.dir_name in include
+                }
+
+        # truncate the data to the shortest one
+        least = min([len(df) for df in dfs.values()])
+        self.data = [
+            Data(self, device, state, df.iloc[:least, :]) for device, df in dfs.items()
         ]
-        if w > 600:
-            raise ValueError(w)
-        self.w: int = w
-        self.s: int = s
-        self.state: State = state
+        
         self.classes = self.classify_data()
         self.confusion_matrix = self.compute_confusion_matrix()
         self.f1_scores = self.compute_f1_scores()
@@ -268,9 +333,7 @@ class Experiment:
         for each of the testing datasets in an experiment, predict the device they are based on the training data
 
         # are all the lengths the same?
-        >>>
-        >>> exp = Experiment(Context('../PowerIDS/classifier/power_csv'), State.IDLE, [Metric.MEAN], 180, 10)
-
+        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10)
         >>> len(set([v.total() for v in exp.classes.values()]))
         1
 
@@ -282,15 +345,15 @@ class Experiment:
 
         training_profiles = {
             data.device: {
-                metric: np.median([point[metric] for point in compute_profile(self, data.training)])
+                metric: np.median([point[metric] for point in data.training.profile])
                 for metric in self.metrics
             }
             for data in self.data
         }
         testing_profiles = {
-            data.device: compute_profile(self, data.testing) for data in self.data
+            data.device: data.testing.profile for data in self.data
         }
-        matches = {}
+        matches: dict[Device, Counter] = {}
         for actual_device, testing_profile in testing_profiles.items():
             closest = []
             # test_pos = [testing_profile[metric] for metric in self.metrics]
@@ -335,11 +398,17 @@ class Experiment:
         """
         compute the confusion matrix using the given classes
 
-        >>> exp = Experiment(Context('../PowerIDS/classifier/power_csv'), State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori'])
         >>> print(exp.confusion_matrix)
         [[0.75 0.   0.25]
          [0.   1.   0.  ]
          [0.   0.   1.  ]]
+        >>> exp.classes
+
+
+        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv'])
+        >>> exp.classes = {exp.devices[0]: Counter([exp.devices[0], exp.devices[1]]), exp.devices[1]: Counter([])}
+        >>> exp.compute_confusion_matrix()
         """
         n = len(self.devices)
         matrix = np.zeros((n, n))
@@ -357,7 +426,7 @@ class Experiment:
 
         not easy to convert into a list comprehension due to the variables and control flow
 
-        >>> exp = Experiment(Context('../PowerIDS/classifier/power_csv'), State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori'])
         >>> exp.f1_scores
         {Apple TV: np.float64(0.8571428571428571), Samsung 32" TV: np.float64(1.0), Cosori Air Fryer: np.float64(0.8888888888888888)}
         """
@@ -407,57 +476,7 @@ def sort_dict_by_value(dict, key=lambda x: x[1], reverse=False):
 #     return pd.Interval(min(metric), max(metric))
 
 
-def compute_profile(exp: Experiment, df: pd.DataFrame):
-    """
-    run all windows, return metrics in the form [{'mean': value, 'std': value}], where the values are sorted
 
-    the first window takes up s samples, so there are len(data) - s samples left. each addional window uses up o spaces.
-
-    >>> c = Context('../PowerIDS/classifier/power_csv')
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 10, 2)
-    >>> len(compute_profile(exp, pd.DataFrame(data={'power_mW': [1] * 100})))
-    46
-
-    Additonal partial windows aren't counted
-    >>> len(compute_profile(exp, pd.DataFrame(data={'power_mW': [1] * 101})))
-    46
-
-    Non overlapping windows
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 10, 20)
-    >>> len(compute_profile(exp, pd.DataFrame(data={'power_mW': [1] * 100})))
-    5
-
-    >>> compute_profile(exp, pd.DataFrame(data={'power_mW': [1] * 50 + [2] * 50})) # doctest: +NORMALIZE_WHITESPACE
-    [{<Metric.MEAN: 'mean'>: np.float64(1.0), <Metric.STD: 'std'>: np.float64(0.0)}, {<Metric.MEAN: 'mean'>: np.float64(1.0), <Metric.STD: 'std'>: np.float64(0.0)}, {<Metric.MEAN: 'mean'>: np.float64(1.0), <Metric.STD: 'std'>: np.float64(0.0)}, {<Metric.MEAN: 'mean'>: np.float64(2.0), <Metric.STD: 'std'>: np.float64(0.0)}, {<Metric.MEAN: 'mean'>: np.float64(2.0), <Metric.STD: 'std'>: np.float64(0.0)}]
-
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 400, 10)
-    >>> len(compute_profile(exp, pd.DataFrame(data={'power_mW': [1] * 1750})))
-    136
-
-
-    """
-    values: list[dict[Metric, float]] = []
-
-    # TODO do we want non rectangular windows? are edge effects important
-
-    for bin in range((len(df) - exp.w) // exp.s + 1):
-        window_power = df.iloc[bin * exp.s : bin * exp.s + exp.w].power_mW
-        values.append(
-            {Metric.MEAN: window_power.mean(), Metric.STD: window_power.std()}
-        )
-
-    # TOOD fix outlier removal, maybe could be in a different function
-    # compute a mean with outliers removed, values that fall outside of 3 std
-    # mean_mean = np.mean(means)
-    # three_std = 2 * np.std(means)
-
-    # means_no_outliers = [
-    #     mean
-    #     for mean in means
-    #     if mean > mean_mean - three_std and mean < mean_mean + three_std
-    # ]
-
-    return values
 
 
 def my_colormesh(fig, ax, x, y, z):
@@ -583,9 +602,9 @@ if __name__ == "__main__":
     import doctest
     # doctest.FAIL_FAST = True
     # doctest.NORMALIZE_WHITESPACE = True
-
+    c = Context('../PowerIDS/classifier/power_csv')
     print("Running tests")
-    doctest.testmod()
+    # doctest.testmod(extraglobs={"c": c})
 
+    doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())
     print("All good")
-    # doctest.run_docstring_examples(compute_profile, globs=globals())
