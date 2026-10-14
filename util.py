@@ -37,9 +37,11 @@ class Metric(StrEnum):
             case _:
                 return self.value
 
+
 class DatumType(StrEnum):
     TRAINING = "model"
     TESTING = "testing"
+
 
 class Datum:
     """
@@ -48,7 +50,7 @@ class Datum:
     run all windows, return metrics in the form [{'mean': value, 'std': value}], where the values are sorted
 
     the first window takes up s samples, so there are len(data) - s samples left. each addional window uses up o spaces.
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 10, 2)
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 10, 2)
     >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), DatumType.TRAINING).profile)
     46
 
@@ -57,14 +59,14 @@ class Datum:
     46
 
     Non overlapping windows
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 10, 20)
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 10, 20)
     >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), DatumType.TRAINING).profile)
     5
 
     >>> Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 50 + [2] * 50}), DatumType.TRAINING).profile # doctest: +NORMALIZE_WHITESPACE
     [{<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19)}]
 
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 400, 10)
+    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 400, 10)
     >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 1750}), DatumType.TRAINING).profile)
     136
 
@@ -75,7 +77,7 @@ class Datum:
     [38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38]
 
     TODO do we want non rectangular windows? are edge effects important
-    
+
     # TODO fix outlier removal, maybe could be in a different function
             # compute a mean with outliers removed, values that fall outside of 3 std
             # mean_mean = np.mean(means)
@@ -93,18 +95,23 @@ class Datum:
         self.df = df
         self.type = type
         self.profile: list[dict[Metric, float]] = []
-        for bin in range((len(self.df) - self.data.experiment.w) // self.data.experiment.s + 1):
-            window_power = self.df.iloc[bin * self.data.experiment.s : bin * self.data.experiment.s + self.data.experiment.w].power_mW / 1000
+        for bin in range(
+            (len(self.df) - self.data.experiment.w) // self.data.experiment.s + 1
+        ):
+            window_power = (
+                self.df.iloc[
+                    bin * self.data.experiment.s : bin * self.data.experiment.s
+                    + self.data.experiment.w
+                ].power_mW
+                / 1000
+            )
             self.profile.append(
                 {Metric.MEAN: window_power.mean(), Metric.STD: window_power.std()}
             )
-            
-    
 
 
 class Data:
     """
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10)
     >>> [len(data.training.df) for data in exp.data]
     [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
 
@@ -176,7 +183,8 @@ class Context:
 
     def device_from_name(self, device_name):
         return [device for device in self.devices if device.dir_name == device_name][0]
-    
+
+
 def map_device_names(name):
     match name:
         case "appletv":
@@ -268,12 +276,15 @@ class Device:
             return self.dir_name
 
 
+class Classifier(StrEnum):
+    Median = "Median"
+    Centroid = "Centroid"
+
+
 class Experiment:
     """
     Verify the new devices are seperate
 
-    >>> 
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, )
     >>> c.devices.pop()
     Xiaomi Blender
     >>> len(exp.devices)
@@ -289,18 +300,26 @@ class Experiment:
     True
 
     Filtering
-    >>> len(Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
+    >>> len(Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
     3
     """
 
     def __init__(
-        self, context: Context, state: State, metrics: list[Metric], w, s, include=[]
+        self,
+        context: Context,
+        state: State,
+        metrics: list[Metric],
+        classify_by: Classifier,
+        w,
+        s,
+        include=[],
     ):
         if w > 600:
             raise ValueError(w)
         self.context = context
         self.state: State = state
         self.metrics = metrics
+        self.classify_by = classify_by
         self.w: int = w
         self.s: int = s
         if include == []:
@@ -309,19 +328,21 @@ class Experiment:
             device for device in context.devices if device.dir_name in include
         ]
 
-        
-        dfs = {device: pd.read_csv(
-                    f"{self.context.path}/{device.category}/{device.dir_name}/{state}.csv",
-                    parse_dates=["timestamp"],
-                ) for device in self.devices if device.dir_name in include
-                }
+        dfs = {
+            device: pd.read_csv(
+                f"{self.context.path}/{device.category}/{device.dir_name}/{state}.csv",
+                parse_dates=["timestamp"],
+            )
+            for device in self.devices
+            if device.dir_name in include
+        }
 
         # truncate the data to the shortest one
         least = min([len(df) for df in dfs.values()])
         self.data = [
             Data(self, device, state, df.iloc[:least, :]) for device, df in dfs.items()
         ]
-        
+
         self.classes = self.classify_data()
         self.confusion_matrix = self.compute_confusion_matrix()
         self.f1_scores = self.compute_f1_scores()
@@ -333,26 +354,37 @@ class Experiment:
         for each of the testing datasets in an experiment, predict the device they are based on the training data
 
         # are all the lengths the same?
-        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10)
         >>> len(set([v.total() for v in exp.classes.values()]))
         1
 
-
         >>> exp.f1_macro_average
-        np.float64(0.7417577500858664)
+        np.float64(0.742989379804219)
 
         """
-
-        training_profiles = {
-            data.device: {
-                metric: np.median([point[metric] for point in data.training.profile])
-                for metric in self.metrics
+        if self.classify_by == Classifier.Median:
+            training_profiles = {
+                data.device: {
+                    metric: np.median(
+                        [point[metric] for point in data.training.profile]
+                    )
+                    for metric in self.metrics
+                }
+                for data in self.data
             }
-            for data in self.data
-        }
-        testing_profiles = {
-            data.device: data.testing.profile for data in self.data
-        }
+        elif self.classify_by == Classifier.Centroid:
+            # device: {"std": centroid_std, "mean": centroid_mean}
+            training_profiles = {
+                data.device: {
+                    metric: sum([point[metric] for point in data.training.profile])
+                    / len(data.training.profile)
+                    for metric in self.metrics
+                }
+                for data in self.data
+            }
+        else:
+            raise ValueError(self.classify_by)
+
+        testing_profiles = {data.device: data.testing.profile for data in self.data}
         matches: dict[Device, Counter] = {}
         for actual_device, testing_profile in testing_profiles.items():
             closest = []
@@ -398,17 +430,18 @@ class Experiment:
         """
         compute the confusion matrix using the given classes
 
-        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori'])
-        >>> print(exp.confusion_matrix)
-        [[0.75 0.   0.25]
+        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> print(exp.confusion_matrix) # doctest: +NORMALIZE_WHITESPACE
+        [[0.76666667 0. 0.23333333]
          [0.   1.   0.  ]
          [0.   0.   1.  ]]
         >>> exp.classes
-        # TODO verify that old behaviour was bugged?
+        {Apple TV: Counter({Apple TV: 46, Cosori Air Fryer: 14}), Samsung 32" TV: Counter({Samsung 32" TV: 60}), Cosori Air Fryer: Counter({Cosori Air Fryer: 60})}
 
-        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv'])
-        >>> exp.classes = {exp.devices[0]: Counter([exp.devices[0], exp.devices[1]]), exp.devices[1]: Counter([])}
-        >>> exp.compute_confusion_matrix()
+        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv'])
+        >>> exp.classes = {exp.devices[0]: Counter([exp.devices[0], exp.devices[1]]), exp.devices[1]: Counter([exp.devices[0]] * 14 + [exp.devices[1]] * 42)}
+        >>> exp.compute_confusion_matrix() # doctest: +NORMALIZE_WHITESPACE
+        array([[0.5 , 0.5 ], [0.25, 0.75]])
         """
         n = len(self.devices)
         matrix = np.zeros((n, n))
@@ -426,9 +459,9 @@ class Experiment:
 
         not easy to convert into a list comprehension due to the variables and control flow
 
-        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
         >>> exp.f1_scores
-        {Apple TV: np.float64(0.8571428571428571), Samsung 32" TV: np.float64(1.0), Cosori Air Fryer: np.float64(0.8888888888888888)}
+        {Apple TV: np.float64(0.8679245283018868), Samsung 32" TV: np.float64(1.0), Cosori Air Fryer: np.float64(0.8955223880597015)}
         """
 
         scores = {}
@@ -474,9 +507,6 @@ def sort_dict_by_value(dict, key=lambda x: x[1], reverse=False):
 
 # def intervalise(metric):
 #     return pd.Interval(min(metric), max(metric))
-
-
-
 
 
 def my_colormesh(fig, ax, x, y, z):
@@ -600,11 +630,13 @@ def graph_confusion_matrix(exp):
 
 if __name__ == "__main__":
     import doctest
+
     # doctest.FAIL_FAST = True
     # doctest.NORMALIZE_WHITESPACE = True
-    c = Context('../PowerIDS/classifier/power_csv')
+    c = Context("../PowerIDS/classifier/power_csv")
+    exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10)
     print("Running tests")
-    # doctest.testmod(extraglobs={"c": c})
+    doctest.testmod()
 
-    doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())
+    # doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())
     print("All good")
