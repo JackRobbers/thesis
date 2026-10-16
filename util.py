@@ -20,11 +20,12 @@ class Metric(StrEnum):
     Check we can loop over the metrics
 
     >>> len(list(Metric))
-    2
+    3
     """
 
     MEAN = "mean"
     STD = "std"
+    FFT = "fft"
     # BOTH = "both"
     # MEAN_NO_OUTLIERS = "mean_no_outliers"
 
@@ -64,7 +65,7 @@ class Datum:
     5
 
     >>> Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 50 + [2] * 50}), DatumType.TRAINING).profile # doctest: +NORMALIZE_WHITESPACE
-    [{<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19)}]
+    [{<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.complex128(0.01+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.complex128(0.01+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.complex128(0.01+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.complex128(0.02+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.complex128(0.02+0j)}]
 
     >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 400, 10)
     >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 1750}), DatumType.TRAINING).profile)
@@ -106,7 +107,7 @@ class Datum:
                 / 1000
             )
             self.profile.append(
-                {Metric.MEAN: window_power.mean(), Metric.STD: window_power.std()}
+                {Metric.MEAN: window_power.mean(), Metric.STD: window_power.std(), Metric.FFT: np.abs(np.fft.fft(window_power)[0])}
             )
 
 
@@ -360,6 +361,18 @@ class Experiment:
         >>> exp.f1_macro_average
         np.float64(0.742989379804219)
 
+        >>> fft1 = Experiment(c, State.IDLE, [Metric.FFT], Classifier.Median, 600, 100)
+        >>> fft1.f1_macro_average
+
+        >>> fft = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 600, 100)
+        >>> fft.f1_macro_average
+
+        >>> fft = Experiment(c, State.IDLE, [Metric.MEAN, Metric.STD], Classifier.Median, 600, 100)
+        >>> fft.f1_macro_average
+
+        >>> fft = Experiment(c, State.IDLE, [Metric.MEAN, Metric.STD, Metric.FFT], Classifier.Median, 600, 100)
+        >>> fft.f1_macro_average
+
         """
         if self.classify_by == Classifier.Median:
             training_profiles = {
@@ -388,7 +401,7 @@ class Experiment:
         matches: dict[Device, Counter] = {}
         for actual_device, testing_profile in testing_profiles.items():
             closest = []
-            # test_pos = [testing_profile[metric] for metric in self.metrics]
+
             # find the closest training point for this
             # loop over all the testing windows
             for window_to_classify in testing_profile:
@@ -402,7 +415,6 @@ class Experiment:
                         ]
                     )
 
-                    # new_dist = sum(mu_sigma[0] - pos[0])**2 + (mu_sigma[1] - pos[1])**2
                     if new_dist < dist:
                         closest_dev = predicted_device
                         dist = new_dist
@@ -411,20 +423,6 @@ class Experiment:
             matches[actual_device] = Counter(closest)
 
         return matches
-        # return {
-        #     actual_device: Counter(
-        #         [
-        #             reduce(
-        #                 lambda acc, new: (
-        #                     new if abs(new[1][metric] - point) < abs(acc[1][metric] - point) else acc
-        #                 ),
-        #                 training_profiles.items(),
-        #             )[0]
-        #             for metric, points in testing_profile.items()
-        #         ]
-        #     )
-        #     for actual_device, testing_profile in testing_profiles.items()
-        # }
 
     def compute_confusion_matrix(self):
         """
@@ -521,7 +519,7 @@ def my_colormesh(fig, ax, x, y, z):
     bar.set_ticks(ticks=ticks, labels=map(lambda x: f"{x:.0%}", ticks))
 
 
-def graph_confusion_matrix(exp):
+def graph_confusion_matrix(exp: Experiment):
     # TODO better font scaling
     fig, ax = plt.subplots()
     names = [device.name() for device in exp.devices]
@@ -562,8 +560,10 @@ def graph_confusion_matrix(exp):
     ax.tick_params(axis="both", labelsize=7 if n > 30 else 11)
     # fig.set_dpi(400)
     # fig.
-    fig.savefig(
-        f"assets/confusion-matrix-{exp.state}-{exp.w}-{exp.s}.pdf", bbox_inches="tight"
+    filename = f"assets/confusion-matrix-{exp.state}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
+    print(f"Wrote graph to {filename}")
+    fig.savefig(filename
+        , bbox_inches="tight"
     )
 
 
@@ -636,7 +636,7 @@ if __name__ == "__main__":
     c = Context("../PowerIDS/classifier/power_csv")
     exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10)
     print("Running tests")
-    doctest.testmod()
+    # doctest.testmod()
 
-    # doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())
+    doctest.run_docstring_examples(Experiment.classify_data, globs=globals())
     print("All good")

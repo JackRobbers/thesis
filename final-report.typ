@@ -29,6 +29,8 @@
     let styled_cell = cell
     if cell.x != 0 {
       styled_cell = align(right, styled_cell)
+    } else {
+      styled_cell = align(left, styled_cell)
     }
     if cell.y == 0 {
         styled_cell = [*#styled_cell*]
@@ -47,19 +49,17 @@
 #set heading(numbering: "1.")
 
 = Work done this week:
-- Finished the idle vs active
-- 90% done on 2d median. need to squash a bug
-- 25% done on k-means
-- Got tapos, updated measurement scripts. 
-- Updated repo for use as contribution, doctests, parametric
+- 2d (or nD median)
+- mu and std metric
+- summary table with
+- didn't do k means because this more for building classes
+// - tried fft but with poor performance
 
 = Questions:
+- should I try a random forest classifier? / different ML techniques. Can try to replicate paper
+= Results
 
--Need access to computer
-
-- Dr Nurdin email, B capped to 50% and 10% reduction on C
-
-#look-at-in-meeting[Idle vs Average]
+== Idle vs Active
 
 
 #figure(image("assets/confusion-matrix-idle-180-10.pdf", width: 120%), caption: [Confusion Matrix for Idle data windowed with w=180, s=10. Metric: mean and classification by median]) <idle180_10>
@@ -70,12 +70,44 @@
 
 @macroavg shows that the performance is better on the active dataset. This is due to there being more distinct levels of active power usage. In the idle dataset, the spread of power is lower so devices are more likely to overlap.
 
-#look-at-in-meeting[$mu$ $sigma$ by 2d median]
+== Effect of window size and shift
+
+== $mu$ $sigma$ by 2d median
 
 Classify by both metrics using 2d median. 
 
 Naive technique, feels like it introduces some error, but all the devices have it? They don't actually overlap
 
-#figure(image("assets/PXL_20261007_224643298.jpg"), caption: [Rough diagram of method])
+#figure(image("assets/confusion-matrix-idle-300-120-mean-std-Median.pdf"), caption: [Confusion Matrix for Idle  data windowed with w=300, s=120. Metric: $mu$ and $sigma$ and classification by median])
 
+#figure(image("assets/confusion-matrix-active-300-120-mean-std-Median.pdf"), caption: [Confusion Matrix for Active  data windowed with w=300, s=120. Metric: $mu$ and $sigma$ and classification by median])
 
+// == By first harmonic
+
+== Centroid Classifier
+
+== Summary Table / Problematic Devices
+ 
+#[
+  #show table.cell.where(body: [1.000]): it => {
+    highlight(fill: green)[#it]
+  }
+
+   #show table.cell.where(y: 33): it => {
+    [*#it*]
+  }
+
+  #figure(
+    render_table(output("summary", item: 0)), caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = 300, s = 120. Sorted by the performance in Idle by $mu$] 
+  )
+  <comparison>
+  
+]
+
+@comparison compares the performances of all devices in the both the idle and active datasets. 
+
+- The overall performance is better in the active mode, but individual devices that perform well in idle do not necessarily perform as well in active. 
+
+- The performance can degrade by adding the additional metric (e.g Google Nest in Idle), I need to investigate further, but this can happen.
+
+- The worst devices are: Honeywell Thermostat, Weekett Kettle, Antella Light, Leopro Light, Echo Spot 5 Speaker
