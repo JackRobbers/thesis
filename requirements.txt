@@ -6,3 +6,4 @@ jinja2
 ipympl
 colorhash
 nbdime
+asyncio

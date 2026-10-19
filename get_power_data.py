@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import csv
 import sched
 import time
+import asyncio
 
 
 async def get():
@@ -20,7 +21,7 @@ async def get():
     # TODO mock get_power_and_time funciton
 
     end = datetime.now() + timedelta(minutes=30)
-    with open(f"{end}_measure.csv", "w", newline="") as csvfile:
+    with open(f"../data/{end}_measure.csv", "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(("Power (mW)", "Time", "Active"))
 
@@ -45,4 +46,4 @@ async def get():
             # get previous entry
 
 if __name__ == "__main__":
-    a = get()
+    asyncio.run(get())
