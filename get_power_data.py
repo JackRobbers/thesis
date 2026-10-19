@@ -38,7 +38,7 @@ async def get():
                     writer.writerow(current)
 
             if current[2] != last[2]:
-                print(f"{"on" if current[2] else "off"} {mins_left}")
+                print(f"{'on' if current[2] else 'off'} {mins_left}")
             last = current
 
             # stream this out to a file
