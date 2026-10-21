@@ -79,6 +79,8 @@
 ]
 
 #pagebreak()
+#counter(page).update(1)
+#set page(numbering: "1.")
 
 #align(center + horizon)[
   *Abstract*
