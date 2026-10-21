@@ -73,7 +73,7 @@ async def run():
 
     logfile = f"../data/{datetime.now().isoformat(timespec='seconds')}.log"
     
-    logging.basicConfig(filename=logfile, level=logging.INFO)
+    logging.basicConfig(filename=logfile, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S',    format='%(asctime)s %(levelname)-8s %(message)s',)
     print(f"Running, check {logfile} for errors")
     logger.info(f"Starting with config: {config['hosts']}")
     async with asyncio.TaskGroup() as tg:
