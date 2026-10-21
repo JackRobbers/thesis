@@ -20,7 +20,9 @@ import os
 import yaml
 import logging
 logger = logging.getLogger()
-
+logfile = f"../data/{datetime.now().isoformat(timespec='seconds')}.log"
+    
+logging.basicConfig(filename=logfile, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S',    format='%(asctime)s %(levelname)-8s %(message)s',)
 # Could do some kind of autodiscovery, but pretty slow.
 # Run nmap externally?
 
@@ -71,9 +73,7 @@ async def run():
         config = yaml.safe_load(y)
     client = ApiClient(config['tapo']['username'], config['tapo']['password'])
 
-    logfile = f"../data/{datetime.now().isoformat(timespec='seconds')}.log"
     
-    logging.basicConfig(filename=logfile, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S',    format='%(asctime)s %(levelname)-8s %(message)s',)
     print(f"Running, check {logfile} for errors")
     logger.info(f"Starting with config: {config['hosts']}")
     async with asyncio.TaskGroup() as tg:
@@ -84,7 +84,8 @@ async def run():
         
 
 
-    
+import atexit
+atexit.register(lambda: logger.info("Program Killed"))
 
 if __name__ == "__main__":
     asyncio.run(run())
