@@ -6,7 +6,7 @@
         {
             "label": "python",
             "type": "shell",
-            "command": "${command:python.interpreterPath} util.py",
+            "command": "${command:python.interpreterPath} ${file}",
             "presentation": {
                 "reveal": "always",
                 "focus": true,
