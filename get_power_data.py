@@ -17,29 +17,16 @@ from datetime import datetime
 import csv
 import asyncio
 import os
-
-client = ApiClient("j.robbers@unsw.edu.au", 'kdTk">>eJ"4|fZOAZZVx')
-
-NETWORK_PREFIX = "192.168.1."
-
-# key is the device the tapo is connect to
-# first value element is the nickname in the tapo app of the device
-# second value element is the host number on the network 
-HOSTS = {
-    "googlehome": ("A", "248"),
-    "amazonecho": ("B", "229"),
-    "amazonecho2": ("C", "212"),
-    "amazonechoshow": ("D", "134"),
-    "grdconnect": ("E", "214"),
-    "googleguik2": ("F", "133"),
-}
+import yaml
+import logging
+logger = logging.getLogger()
 
 # Could do some kind of autodiscovery, but pretty slow.
 # Run nmap externally?
 
 
 # Write power at 1HZ forever
-async def write_power(device_name, nickname, host):
+async def write_power(client, device_name, nickname, ip):
     while True:
         try:
             directory = f"../data/{device_name}"
@@ -47,7 +34,7 @@ async def write_power(device_name, nickname, host):
                 os.mkdir(directory)
 
             start = datetime.now()
-            device = await client.p110(f"{NETWORK_PREFIX}{host}")
+            device = await client.p110(ip)
             info = await device.get_device_info()
             if nickname != info.nickname:
                 raise ValueError
@@ -58,7 +45,7 @@ async def write_power(device_name, nickname, host):
                 writer = csv.writer(csvfile)
                 writer.writerow(("Time","Power_mW"))
         except Exception as e:
-            print(f"Failed to setup {device_name}, retrying: {e}")
+            logger.info(f"Failed to setup {device_name}, retrying: {e}")
             # contiue, so restart outer loop
             continue
 
@@ -72,16 +59,26 @@ async def write_power(device_name, nickname, host):
                 await asyncio.sleep(1)
 
             except Exception as e:
-                print(f'Failed to read from {device_name}, restarting connection {e}')
+                logger.info(f'Failed to read from {device_name}, restarting connection {e}')
                 # break, and go back to outer loop
                 break
         
 
 
 async def run():
+
+    with open("experiment_config.yaml") as y:
+        config = yaml.safe_load(y)
+    client = ApiClient(config['tapo']['username'], config['tapo']['password'])
+
+    logfile = f"../data/{datetime.now().isoformat(timespec='seconds')}.log"
+    
+    logging.basicConfig(filename=logfile, level=logging.INFO)
+    print(f"Running, check {logfile} for errors")
+    logger.info(f"Starting with config: {config['hosts']}")
     async with asyncio.TaskGroup() as tg:
-        for device_name, (nickname, host) in HOSTS.items():
-            tg.create_task(write_power(device_name, nickname, host))
+        for device_name, nickname, host in config['hosts']:
+            tg.create_task(write_power(client, device_name, nickname, f"{config['network_prefix']}{host}"))
 
            
         

@@ -7,3 +7,4 @@ ipympl
 colorhash
 nbdime
 asyncio
+pyyaml

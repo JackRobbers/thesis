@@ -14,6 +14,9 @@ class State(StrEnum):
     ACTIVE = "active"
     IDLE = "idle"
 
+    def __repr__(self):
+        return str(self)
+
 
 class Metric(StrEnum):
     """
@@ -51,7 +54,7 @@ class Datum:
     run all windows, return metrics in the form [{'mean': value, 'std': value}], where the values are sorted
 
     the first window takes up s samples, so there are len(data) - s samples left. each addional window uses up o spaces.
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 10, 2)
+    >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 10, 2)
     >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), DatumType.TRAINING).profile)
     46
 
@@ -60,14 +63,14 @@ class Datum:
     46
 
     Non overlapping windows
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 10, 20)
+    >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 10, 20)
     >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), DatumType.TRAINING).profile)
     5
 
     >>> Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 50 + [2] * 50}), DatumType.TRAINING).profile # doctest: +NORMALIZE_WHITESPACE
-    [{<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.complex128(0.01+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.complex128(0.01+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.complex128(0.01+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.complex128(0.02+0j)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.complex128(0.02+0j)}]
+    [{<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.float64(0.01)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.float64(0.01)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.float64(0.01)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.float64(0.02)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.float64(0.02)}]
 
-    >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 400, 10)
+    >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 400, 10)
     >>> len(Datum(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 1750}), DatumType.TRAINING).profile)
     136
 
@@ -135,6 +138,9 @@ class Data:
         )
         self.training = Datum(self, df.iloc[:split, :], DatumType.TRAINING)
         self.testing = Datum(self, df.iloc[split:, :], DatumType.TESTING)
+
+    def __repr__(self):
+        return f'<{self.device}, {self.state}>'
 
 
 def category_sort_order(cat):
@@ -301,14 +307,14 @@ class Experiment:
     True
 
     Filtering
-    >>> len(Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
+    >>> len(Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
     3
     """
 
     def __init__(
         self,
         context: Context,
-        state: State,
+        states: list[State],
         metrics: list[Metric],
         classify_by: Classifier,
         w,
@@ -318,7 +324,7 @@ class Experiment:
         if w > 600:
             raise ValueError(w)
         self.context = context
-        self.state: State = state
+        self.states: list[State] = states
         self.metrics = metrics
         self.classify_by = classify_by
         self.w: int = w
@@ -330,10 +336,11 @@ class Experiment:
         ]
 
         dfs = {
-            device: pd.read_csv(
+            (device, state) : pd.read_csv(
                 f"{self.context.path}/{device.category}/{device.dir_name}/{state}.csv",
                 parse_dates=["timestamp"],
             )
+            for state in self.states
             for device in self.devices
             if device.dir_name in include
         }
@@ -341,7 +348,7 @@ class Experiment:
         # truncate the data to the shortest one
         least = min([len(df) for df in dfs.values()])
         self.data = [
-            Data(self, device, state, df.iloc[:least, :]) for device, df in dfs.items()
+            Data(self, device, state, df.iloc[:least, :]) for (device, state), df in dfs.items()
         ]
 
         self.classes = self.classify_data()
@@ -361,22 +368,23 @@ class Experiment:
         >>> exp.f1_macro_average
         np.float64(0.742989379804219)
 
-        >>> fft1 = Experiment(c, State.IDLE, [Metric.FFT], Classifier.Median, 600, 100)
+        >>> fft1 = Experiment(c, [State.IDLE], [Metric.FFT], Classifier.Median, 600, 100)
         >>> fft1.f1_macro_average
-
-        >>> fft = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 600, 100)
+        np.float64(0.6989247311827957)
+        >>> fft = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 600, 100)
         >>> fft.f1_macro_average
-
-        >>> fft = Experiment(c, State.IDLE, [Metric.MEAN, Metric.STD], Classifier.Median, 600, 100)
+        np.float64(0.6989247311827957)
+        >>> fft = Experiment(c, [State.IDLE], [Metric.MEAN, Metric.STD], Classifier.Median, 600, 100)
         >>> fft.f1_macro_average
-
-        >>> fft = Experiment(c, State.IDLE, [Metric.MEAN, Metric.STD, Metric.FFT], Classifier.Median, 600, 100)
+        np.float64(0.8086021505376344)
+        >>> fft = Experiment(c, [State.IDLE], [Metric.MEAN, Metric.STD, Metric.FFT], Classifier.Median, 600, 100)
         >>> fft.f1_macro_average
+        np.float64(0.6989247311827957)
 
         """
         if self.classify_by == Classifier.Median:
             training_profiles = {
-                data.device: {
+                (data.device, data.state): {
                     metric: np.median(
                         [point[metric] for point in data.training.profile]
                     )
@@ -387,7 +395,7 @@ class Experiment:
         elif self.classify_by == Classifier.Centroid:
             # device: {"std": centroid_std, "mean": centroid_mean}
             training_profiles = {
-                data.device: {
+                (data.device, data.state): {
                     metric: sum([point[metric] for point in data.training.profile])
                     / len(data.training.profile)
                     for metric in self.metrics
@@ -397,17 +405,17 @@ class Experiment:
         else:
             raise ValueError(self.classify_by)
 
-        testing_profiles = {data.device: data.testing.profile for data in self.data}
-        matches: dict[Device, Counter] = {}
-        for actual_device, testing_profile in testing_profiles.items():
-            closest = []
+        testing_profiles = {(data.device, data.state): data.testing.profile for data in self.data}
+        matches: dict[tuple[Device, State], Counter[tuple[Device, State]]] = {}
+        for dev_state, testing_profile in testing_profiles.items():
+            closest: list[tuple[Device, State]] = []
 
             # find the closest training point for this
             # loop over all the testing windows
             for window_to_classify in testing_profile:
-                closest_dev = None
+                closest_prediction = None
                 dist = np.inf
-                for predicted_device, training in training_profiles.items():
+                for predicted, training in training_profiles.items():
                     new_dist = np.sum(
                         [
                             (window_to_classify[metric] - training[metric]) ** 2
@@ -416,11 +424,13 @@ class Experiment:
                     )
 
                     if new_dist < dist:
-                        closest_dev = predicted_device
+                        closest_prediction = predicted
                         dist = new_dist
-                closest.append(closest_dev)
+                # weird cheat around the None
+                if closest_prediction:
+                    closest.append(closest_prediction)
 
-            matches[actual_device] = Counter(closest)
+            matches[dev_state] = Counter(closest)
 
         return matches
 
@@ -428,26 +438,31 @@ class Experiment:
         """
         compute the confusion matrix using the given classes
 
-        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
         >>> print(exp.confusion_matrix) # doctest: +NORMALIZE_WHITESPACE
         [[0.76666667 0. 0.23333333]
          [0.   1.   0.  ]
          [0.   0.   1.  ]]
         >>> exp.classes
-        {Apple TV: Counter({Apple TV: 46, Cosori Air Fryer: 14}), Samsung 32" TV: Counter({Samsung 32" TV: 60}), Cosori Air Fryer: Counter({Cosori Air Fryer: 60})}
+        {(Apple TV, idle): Counter({(Apple TV, idle): 46, (Cosori Air Fryer, idle): 14}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, idle): 60}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 60})}
 
-        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv'])
-        >>> exp.classes = {exp.devices[0]: Counter([exp.devices[0], exp.devices[1]]), exp.devices[1]: Counter([exp.devices[0]] * 14 + [exp.devices[1]] * 42)}
+        >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv'])
+        >>> exp.classes = {(exp.devices[0], State.IDLE): Counter([(exp.devices[0],  State.IDLE), (exp.devices[1], State.IDLE)]), (exp.devices[1], State.IDLE): Counter([(exp.devices[0], State.IDLE)] * 14 + [(exp.devices[1], State.IDLE)] * 42)}
         >>> exp.compute_confusion_matrix() # doctest: +NORMALIZE_WHITESPACE
         array([[0.5 , 0.5 ], [0.25, 0.75]])
+
+        two states
+        >>> exp = Experiment(c, [State.IDLE, State.ACTIVE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp.classes
+        >>> exp.confusion_matrix
         """
-        n = len(self.devices)
+        n = len(self.data)
         matrix = np.zeros((n, n))
         for i, class_ in enumerate(self.classes.values()):
-            for device, count in class_.items():
+            for (device, state), count in class_.items():
                 share = count / class_.total()
-
-                matrix[i][self.devices.index(device)] = share
+                j = [j for j, data in enumerate(self.data) if data.device == device and data.state == state][0]
+                matrix[i][j] = share
 
         return matrix
 
@@ -457,9 +472,9 @@ class Experiment:
 
         not easy to convert into a list comprehension due to the variables and control flow
 
-        >>> exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
         >>> exp.f1_scores
-        {Apple TV: np.float64(0.8679245283018868), Samsung 32" TV: np.float64(1.0), Cosori Air Fryer: np.float64(0.8955223880597015)}
+        {<Apple TV, idle>: np.float64(0.8679245283018868), <Samsung 32" TV, idle>: np.float64(1.0), <Cosori Air Fryer, idle>: np.float64(0.8955223880597015)}
         """
 
         scores = {}
@@ -473,7 +488,7 @@ class Experiment:
                 if j != i:
                     fn += self.confusion_matrix[j][i]
                     fp += self.confusion_matrix[i][j]
-            scores[self.devices[i]] = 0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
+            scores[self.data[i]] = 0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
         return scores
 
     def compute_precision(self):
@@ -490,7 +505,7 @@ class Experiment:
                 if j != i:
                     fn += self.confusion_matrix[j][i]
                     fp += self.confusion_matrix[i][j]
-            scores[self.devices[i]] = 0 if tp == 0 else tp / (tp + fp)
+            scores[self.data[i]] = 0 if tp == 0 else tp / (tp + fp)
         return scores
 
 
@@ -522,7 +537,7 @@ def my_colormesh(fig, ax, x, y, z):
 def graph_confusion_matrix(exp: Experiment):
     # TODO better font scaling
     fig, ax = plt.subplots()
-    names = [device.name() for device in exp.devices]
+    names = [data.device.name() for data in exp.data]
     matrix = np.fliplr(exp.confusion_matrix)
     my_colormesh(
         fig,
@@ -532,7 +547,7 @@ def graph_confusion_matrix(exp: Experiment):
         matrix,
     )
 
-    n = len(exp.devices)
+    n = len(exp.data)
     for i in range(n):
         for j in range(n):
             share = matrix[i][j]
@@ -560,7 +575,7 @@ def graph_confusion_matrix(exp: Experiment):
     ax.tick_params(axis="both", labelsize=7 if n > 30 else 11)
     # fig.set_dpi(400)
     # fig.
-    filename = f"assets/confusion-matrix-{exp.state}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
+    filename = f"assets/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
     print(f"Wrote graph to {filename}")
     fig.savefig(filename
         , bbox_inches="tight"
@@ -634,9 +649,10 @@ if __name__ == "__main__":
     # doctest.FAIL_FAST = True
     # doctest.NORMALIZE_WHITESPACE = True
     c = Context("../PowerIDS/classifier/power_csv")
-    exp = Experiment(c, State.IDLE, [Metric.MEAN], Classifier.Median, 180, 10)
+    exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10)
+    
     print("Running tests")
-    # doctest.testmod()
 
-    doctest.run_docstring_examples(Experiment.classify_data, globs=globals())
+    doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())
+    doctest.testmod()
     print("All good")

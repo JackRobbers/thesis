@@ -11,7 +11,7 @@
                 "reveal": "always",
                 "focus": true,
                 "panel": "shared",
-                "clear": true
+                "clear": false
             },
             "problemMatcher": []
         }
