@@ -226,8 +226,15 @@ To evaluate the performance of the classification we compute a confusion matrix,
 
 == Determining appropriate values of window parameters
 
-The data windowing is controlled by two parameters, $w$ and $s$. These effect the performance so an informed choice needs to be made. Vary $w$ from 10 to 600 (600 seconds = 10 minutes, chosen as the upper limit due to the short nature the SafeNet Dataset). Preliminary results showed that $s$ had a reduced effect 
+The data windowing is controlled by two parameters, $w$ and $s$. These effect the performance of the metrics,  $w$ was varied from 10 to 600, with a step of 1 second. 600 seconds = 10 minutes was chosen as the upper limit because with our split there is only 10 minutes of training data. A very long window also increases the latency of the classification when operating in a real time environment. Preliminary results showed that $s$ had a minor effect compared to $w$, so only a few values.
 
+
+#todo("Combine plots into 1?")
+
+#figure(image("assets/w_s_idle_100.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on IDLE data classfied by $mu$]) <w_s_idle>
+#figure(image("assets/w_s_active_100.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on ACTIVE data classified by $mu$]) <w_s_active>
+
+From @w_s_idle and @w_s_active, we can conclude that performance is degraded if $w < 100$
 
 
 

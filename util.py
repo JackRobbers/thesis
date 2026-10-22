@@ -357,6 +357,9 @@ class Experiment:
         self.precision = self.compute_precision()
         self.f1_macro_average = sum(self.f1_scores.values()) / len(self.f1_scores)
 
+    def __repr__(self):
+        return f"{"-".join(self.states)}_{"-".join(self.metrics)}_{self.classify_by}_{self.w}_{self.s}"
+
     def classify_data(self: Experiment):
         """
         for each of the testing datasets in an experiment, predict the device they are based on the training data
