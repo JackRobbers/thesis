@@ -60,7 +60,7 @@
   #large([*SCHOOL OF ELECTRICAL ENGINEERING\
   AND TELECOMMUNICATIONS*])
   #v(1cm)
-  #huge([*Final Report*])
+  #huge([*Thesis C*])
 
   #Large([by])
   #v(-0.2cm)
@@ -87,8 +87,6 @@
   
   #todo("update abstract")
 
-  Internet of Things is a growing industry, with a huge range of devices now populating networks across industrial and home deployments. Profiling of these devices is necessary for attack detection and enforcing that they are well behaved. Previous literature has focused on using network traffic for this, I propose a new approach borrowing the technique of power analysis from cryptography. I present preliminary results showing the promise of this power data and plan for the rest of this Thesis.
-
 ]
 
 
@@ -96,14 +94,15 @@
 
 = Acknowledgements
 
-#todo("formalise")
+The understanding and encouraging help of my supervisor, Hassan Habibi Gharakheili.
 
-I'd like to acknowledge the understanding and encouraging help of my supervisor, Hassan Habibi Gharakheili.
+My parents, siblings, housemates, and friends for their love and support.
 
-
-My parents, housemates, and friends for support. Time to ride bikes!
+#pagebreak()
 
 = Abbreviations
+
+#todo("update from thesis c")
 
 #let abbreviate(defs) = {
   grid(
@@ -123,12 +122,18 @@ My parents, housemates, and friends for support. Time to ride bikes!
   ("MUD", "Manufacturer Usage Description"),
 ))
 
+#pagebreak()
+
 #outline()
-#set heading(numbering: "1.")
+// #set heading(numbering: "Chapter", level: 1)
+#set heading(numbering: "1.1")
+#pagebreak()
 
 = Introduction
 
-== Background
+#todo("Summary of chapters?")
+
+= Background
 
 The Internet of Things global market is valued at around \$860 billion USD; twice as big as Artificial Intelligence @InternetThingsIoT @ArtificialIntelligenceMarket. There are around 24 Billion active devices. Year-on-Year growth in both value and device population is around 11% @NumberConnectedIoT. 
 
@@ -138,14 +143,6 @@ One tool that can counter insecure devices is profiling. An external device can 
 
 Existing research on profiling IoT devices focuses on network traffic, which is a less direct indicator of internal state than power. I hypothesise that power may be more able to identify devices that send traffic intermittently. Power analysis and side channel attacks have long been used in cryptography to defeat the most secure encryption methods.
 
-== Thesis Aims
-
-My thesis has two major aims:
-
-+ Produce a dataset of the power usage and network traffic of a range of IoT devices. 
-
-+ Investigate and evaluate methods for profiling IoT devices using power data.
-
 I've chosen to investigate power due to the following properties:
 
 #emph("Universal"), every IoT device uses power. A profiling solution will work on all devices. Network traffic also has this property, but some possible other channels like temperature do not.
@@ -154,11 +151,11 @@ I've chosen to investigate power due to the following properties:
 
 #emph("Accessible"), non-invasive. Measuring externally powered devices doesn't require any modification to the device. There is the major limitation that battery powered devices would require software and potentially hardware modifications to report their power, hence they are not considered in thesis.
 
-= Literature Review
+== Previous Work
 
-== Profiling and Fingerprinting
+=== Profiling and Fingerprinting
 
-=== A Survey on IoT Profiling, Fingerprinting, and Identification
+==== A Survey on IoT Profiling, Fingerprinting, and Identification
 
 2022 paper, a comprehensive survey of IoT profiling @chenComprehensiveSurveySideChannel2025. They propose a taxonomy of IoT profiling techniques and features that have been seen across the literature. They identify 4 common domains of IoT profiling: Healthcare / Fitness, Smart Farming, Home Automation, and Smart City. They identify a architecture for profiling: data acquisition, feature extraction, data pre processing, modelling normal behaviour, and detection. There are also different types of profiling: device type detection, device instance detection, unseen device detection, and anomaly detection.
 
@@ -166,19 +163,19 @@ Of particular interest is the section on challenges and future directions. Featu
 
 Power is not is not mentioned as a feature, showing a gap in the research.
 
-=== Manufacturer Usage Description
+==== Manufacturer Usage Description
 
 The IETF has proposed a standard for identifying end devices @learManufacturerUsageDescription2019a. It is intended to be used for access control. Under MUD each device communicates a URL, for a file that may be hosted  on the internet, a MUD controller can then enforce various properties on the device using software defined networking @WhyMUDManufacturer.
 
 A 2026 paper, #emph("Role of Device Identification and Manufacturer Usage Description in IoT Security: A Survey") @mazharRoleDeviceIdentification2021 shows the current state of MUD, in particular a number of limitations that may be addressed using profiling. MUD has quite limited real world usage meaning that MUD and non-MUD devices will be mixed in networks for years to come. MUD is vulnerable to firmware modifications and malicious profiles before connection. In particular they highlight the usefulness of profiling and fingerprinting to account for these shortcomings. Some of these may be addressed in future versions of the standard.
 
-=== Leveraging power consumption for anomaly detection on IoT devices in smart homes
+==== Leveraging power consumption for anomaly detection on IoT devices in smart homes
 
 This is the most similar paper to my thesis I've found @nimmyLeveragingPowerConsumption2023. Studied a mock IoT device consisting of a raspberry pi and attached camera, with the power measured through a desktop multimeter. They collect data in three scenarios, normal usage, the smart camera being DDoS attacked, and the camera compromised DDoSing another device. Simple power analysis shows almost doubled power consumption in both of the attack scenarios compared to normal. They then apply a range of machine learning techniques and report a 99.2% accuracy at detecting anomalies using a Dual-Feature Fusion Network. 
 
 This paper shows that my approach has value but leaves many aspects unexplored. Since they only test one device there no comparison or evaluation of their method across additional devices. Additionally, when simple power analysis is sufficient to determine the presence of the attack, it is unjustified to jump to using machine learning a heuristic approach would suffice.
 
-== Side Channels
+=== Side Channels
 
 A side channel is any channel that conveys information other than the intended. For IoT devices the intended channel is the generally the network. Anything that changes in response to internal state can be side-channel. Most side-channels vary in response to the same stimuli, so information leakage to one side channel may indicate leakage to the rest @wangHertzbleedTurningPower2023
 
@@ -192,7 +189,9 @@ Power analysis has two major approaches @chatterjeeHardwareSecurityConnected2022
 
 #emph("Differential"), where many samples of traces in different states are compared. Even very small differences in power can be observed. 
 
-== Dataset
+=== SafeNet Dataset
+
+
 
 The main paper similar to my work @zhouCatchingHackersWatching2026, made their data publicly available @SafeNetIoTPowerIDS2026. They recorded 33 different IoT devices across 5 categories (lights, audio, cameras, tv, appliances) and under a range of conditions both benign and hostile. So far I've only considered the idle scenario in my work, in order to determine the viability of a heuristic technique. Each trace is the power data measured using a smart plug at 1 Hz for around 40 minutes.
 
@@ -203,7 +202,7 @@ There are a number of limitations with this dataset:
 - The amount of available data is relatively small. I will replicate my results on my own dataset to address this.
 
 
-== Current Method
+= Method
 
 #todo("Two paths here / two diagrams?")
 
@@ -223,19 +222,30 @@ To evaluate the performance of the classification we compute a confusion matrix,
  For the overall performance of a test we evaluate the macro average F1 score, this is simply the unweighted mean of all F1 scores of each class.
 
 
+= Results and Discussion
 
-== Idle vs Active
+== Determining appropriate values of window parameters
+
+The data windowing is controlled by two parameters, $w$ and $s$. These effect the performance so an informed choice needs to be made. Vary $w$ from 10 to 600 (600 seconds = 10 minutes, chosen as the upper limit due to the short nature the SafeNet Dataset). Preliminary results showed that $s$ had a reduced effect 
 
 
-#figure(image("assets/confusion-matrix-idle-180-10.pdf", width: 120%), caption: [Confusion Matrix for Idle data windowed with w=180, s=10. Metric: mean and classification by median]) <idle180_10>
 
-#figure(image("assets/confusion-matrix-active-180-10.pdf", width: 120%), caption: [Confusion Matrix for Active  data windowed with w=180, s=10. Metric: mean and classification by median]) <active180_10>
+
+== Idle
+
+// #figure(image("assets/confusion-matrix-idle-180-10.pdf", width: 120%), caption: [Confusion Matrix for Idle data windowed with w=180, s=10. Metric: mean and classification by median]) <idle180_10>
+
+== Active
+
+// #figure(image("assets/confusion-matrix-active-180-10.pdf", width: 120%), caption: [Confusion Matrix for Active  data windowed with w=180, s=10. Metric: mean and classification by median]) <active180_10>
+
+
+== Comparison of Idle and Active
 
 #figure(render_table(output("confusion matrix", item: 6)), caption: [Macro Average F1 Scores compared for Idle and Active datasets, windowed at w=180, s=10 and classified using mean metric and distance from median]) <macroavg>
 
 @macroavg shows that the performance is better on the active dataset. This is due to there being more distinct levels of active power usage. In the idle dataset, the spread of power is lower so devices are more likely to overlap.
 
-== Effect of window size and shift
 
 == $mu$ $sigma$ by 2d median
 
@@ -313,6 +323,9 @@ Naive technique, feels like it introduces some error, but all the devices have i
   [Tapo smart plug], [], [], [],
 )
 
+= Conclusion
+
+== Future Work
 
 = References
 
