@@ -151,7 +151,7 @@ I've chosen to investigate power due to the following properties:
 
 #emph("Accessible"), non-invasive. Measuring externally powered devices doesn't require any modification to the device. There is the major limitation that battery powered devices would require software and potentially hardware modifications to report their power, hence they are not considered in thesis.
 
-== Previous Work
+== Literature Review and Prior Work
 
 === Profiling and Fingerprinting
 
@@ -204,6 +204,8 @@ There are a number of limitations with this dataset:
 
 = Method
 
+== Analysis
+
 #todo("Two paths here / two diagrams?")
 
 #figure(
@@ -221,20 +223,69 @@ To evaluate the performance of the classification we compute a confusion matrix,
 
  For the overall performance of a test we evaluate the macro average F1 score, this is simply the unweighted mean of all F1 scores of each class.
 
+== Building Dataset
+
+The IoT lab contains a number of devices, currently investigating 6 of them.
+
+Power is measured at 1 Hz, and measured continuously using a p110. This matches the SafeNet dataset.
+
+#todo("any changes throughout the day?")
+
+Another thesis student is conducting scans of the network, so we will coordinate to annotate data. However this won't represent the same active state as the device actually being used.
+
+Only have 2 matching devices, try to do similar ones for rest.
+
+#table(
+  columns: 4,
+  [Name], [Model Number], [Category], [Connectivity],
+  [Amazon Echo Show 5], [C76N8S], [Audio], [WiFi],
+  [Google Nest Hub (2nd Gen)], [GUIK2], [Audio], [WiFi],
+  [Apple Home Pod Mini], [A2374], [Audio], [WiFi],
+  [EzViz Camera], [CS-C6N], [Camera], [WiFi],
+  [Aoetec Camera], [CP-AEOHUBV3AN], [Camera], [Ethernet],
+  [D-Link Camera], [DC-8330LH], [Camera], [WiFi]
+  // [Awair], [Audio], [], [],
+  // [Netaimo x3], [?], [], [],
+  // [Amazon Echo x2], [Audio], [], [],
+  // [Triby], [Audio], [], [],
+  // [Samsung Smart Cam], [Camera], [], [],
+  // [Withings ?], [Camera], [], [],
+  // [Pixstar], [Appliance], [], [],
+  // [Google Guik2], [Audio], [], [],
+  // [Nondescript screen with wall hangers on back], [?], [], [],
+  // [Aqara zigee], [], [], [],
+  // [unknown smart bulb], [lights], [], [],
+  // [grd connect bulb], [lights], [], [],
+  // [apple homepod], [smart home], [], [],
+  // [enviz camera], [camera], [], [],
+  // [dlink], [camera], [], [],
+  // [aeotec zigbee], [], [], [],
+  // [vtech], [camera], [], [],
+  // [tapo wireless thingy x2], [], [], [],
+  // [deebot], [applicance], [], [],
+  // [vtech], [camera monitor], [], [],
+  // [hikvision], [camera], [], [],
+  // [bulb x8 various], [lights], [], [],
+  // [interlogix], [camera], [], [],
+  // [laserco], [camera], [], [],
+  // [Tapo smart hub], [], [], [],
+  // [Tapo smart plug], [], [], [],
+)
 
 = Results and Discussion
 
 == Determining appropriate values of window parameters
 
-The data windowing is controlled by two parameters, $w$ and $s$. These effect the performance of the metrics,  $w$ was varied from 10 to 600, with a step of 1 second. 600 seconds = 10 minutes was chosen as the upper limit because with our split there is only 10 minutes of training data. A very long window also increases the latency of the classification when operating in a real time environment. Preliminary results showed that $s$ had a minor effect compared to $w$, so only a few values.
+The data windowing is controlled by two parameters, $w$ and $s$. These effect the performance of the metrics,  $w$ was varied from 10 to 600, at a resolution of 10 seconds. 600 seconds = 10 minutes was chosen as the upper limit because with our split there is only 10 minutes of training data. A very long window also increases the latency of the classification when operating in a real time environment. Preliminary results showed that $s$ had a minor effect compared to $w$, so only a few values.
 
 
 #todo("Combine plots into 1?")
+#todo("Increase resolution, takes hours to run")
 
-#figure(image("assets/w_s_idle_100.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on IDLE data classfied by $mu$]) <w_s_idle>
-#figure(image("assets/w_s_active_100.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on ACTIVE data classified by $mu$]) <w_s_active>
+#figure(image("assets/w_s_idle_10.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on IDLE data classfied by $mu$]) <w_s_idle>
+#figure(image("assets/w_s_active_10.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on ACTIVE data classified by $mu$]) <w_s_active>
 
-From @w_s_idle and @w_s_active, we can conclude that performance is degraded if $w < 100$
+From @w_s_idle and @w_s_active, we can conclude that performance is degraded if $w < 100$. After that performance slowly degrades as w increases. The impact of s is minor, so choose the largest value for computational speed. Choose to fix $w = 150$ and $s = 100$ for the rest of these results.
 
 
 
@@ -249,9 +300,10 @@ From @w_s_idle and @w_s_active, we can conclude that performance is degraded if 
 
 == Comparison of Idle and Active
 
-#figure(render_table(output("confusion matrix", item: 6)), caption: [Macro Average F1 Scores compared for Idle and Active datasets, windowed at w=180, s=10 and classified using mean metric and distance from median]) <macroavg>
+// #figure(render_table(output("confusion matrix", item: 6)), caption: [Macro Average F1 Scores compared for Idle and Active datasets, windowed at w=180, s=10 and classified using mean metric and distance from median]) <macroavg>
 
-@macroavg shows that the performance is better on the active dataset. This is due to there being more distinct levels of active power usage. In the idle dataset, the spread of power is lower so devices are more likely to overlap.
+//@macroavg 
+shows that the performance is better on the active dataset. This is due to there being more distinct levels of active power usage. In the idle dataset, the spread of power is lower so devices are more likely to overlap.
 
 
 == $mu$ $sigma$ by 2d median
@@ -260,9 +312,9 @@ Classify by both metrics using 2d median.
 
 Naive technique, feels like it introduces some error, but all the devices have it? They don't actually overlap
 
-#figure(image("assets/confusion-matrix-idle-300-120-mean-std-Median.pdf"), caption: [Confusion Matrix for Idle  data windowed with w=300, s=120. Metric: $mu$ and $sigma$ and classification by median])
+// #figure(image("assets/confusion-matrix-idle-300-120-mean-std-Median.pdf"), caption: [Confusion Matrix for Idle  data windowed with w=300, s=120. Metric: $mu$ and $sigma$ and classification by median])
 
-#figure(image("assets/confusion-matrix-active-300-120-mean-std-Median.pdf"), caption: [Confusion Matrix for Active  data windowed with w=300, s=120. Metric: $mu$ and $sigma$ and classification by median])
+// #figure(image("assets/confusion-matrix-active-300-120-mean-std-Median.pdf"), caption: [Confusion Matrix for Active  data windowed with w=300, s=120. Metric: $mu$ and $sigma$ and classification by median])
 
 // == By first harmonic
 
@@ -280,7 +332,8 @@ Naive technique, feels like it introduces some error, but all the devices have i
   }
 
   #figure(
-    render_table(output("summary", item: 0)), caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = 300, s = 120. Sorted by the performance in Idle by $mu$] 
+    // render_table(output("summary", item: 0)), caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = 300, s = 120. Sorted by the performance in Idle by $mu$] 
+    "aa"
   )
   <comparison>
   
@@ -295,40 +348,6 @@ Naive technique, feels like it introduces some error, but all the devices have i
 - The worst devices are: Honeywell Thermostat, Weekett Kettle, Antella Light, Leopro Light, Echo Spot 5 Speaker
 
 
-== Lab
-
-#table(
-  columns: 4,
-  [Name], [Model Number], [Category], [Connectivity],
-  [Amazon Echo Show 5], [C76N8S], [Wifi], [],
-  [Google Nest Hub (2nd Gen)], [GUIK2], [], [],
-  [Awair], [Audio], [], [],
-  [Netaimo x3], [?], [], [],
-  [Amazon Echo x2], [Audio], [], [],
-  [Triby], [Audio], [], [],
-  [Samsung Smart Cam], [Camera], [], [],
-  [Withings ?], [Camera], [], [],
-  [Pixstar], [Appliance], [], [],
-  [Google Guik2], [Audio], [], [],
-  [Nondescript screen with wall hangers on back], [?], [], [],
-  [Aqara zigee], [], [], [],
-  [unknown smart bulb], [lights], [], [],
-  [grd connect bulb], [lights], [], [],
-  [apple homepod], [smart home], [], [],
-  [enviz camera], [camera], [], [],
-  [dlink], [camera], [], [],
-  [aeotec zigbee], [], [], [],
-  [vtech], [camera], [], [],
-  [tapo wireless thingy x2], [], [], [],
-  [deebot], [applicance], [], [],
-  [vtech], [camera monitor], [], [],
-  [hikvision], [camera], [], [],
-  [bulb x8 various], [lights], [], [],
-  [interlogix], [camera], [], [],
-  [laserco], [camera], [], [],
-  [Tapo smart hub], [], [], [],
-  [Tapo smart plug], [], [], [],
-)
 
 = Conclusion
 

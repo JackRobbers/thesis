@@ -656,6 +656,6 @@ if __name__ == "__main__":
     
     print("Running tests")
 
-    doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())
+    # doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())
     doctest.testmod()
     print("All good")
