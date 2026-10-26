@@ -29,6 +29,8 @@ logging.basicConfig(filename=logfile, level=logging.INFO, datefmt='%Y-%m-%d %H:%
 
 # Write power at 1HZ forever
 async def write_power(client, device_name, nickname, ip):
+    # running thurs - mon made a 37gb logfile, only log the first error to prevent this
+    log_error = True
     while True:
         try:
             directory = f"../data/{device_name}"
@@ -46,8 +48,11 @@ async def write_power(client, device_name, nickname, ip):
             with open(filename, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(("Time","Power_mW"))
+                log_error = True
         except Exception as e:
-            logger.info(f"Failed to setup {device_name}, retrying: {e}")
+            if log_error:
+                logger.info(f"Failed to setup {device_name}, retrying: {e}")
+                log_error = False
             # contiue, so restart outer loop
             continue
 
@@ -57,11 +62,14 @@ async def write_power(client, device_name, nickname, ip):
                     response = await device.get_energy_usage()
                     writer = csv.writer(csvfile)
                     writer.writerow((response.local_time.isoformat(timespec="milliseconds"), response.current_power))
-
+                    log_error = True
+                    
                 await asyncio.sleep(1)
 
             except Exception as e:
-                logger.info(f'Failed to read from {device_name}, restarting connection {e}')
+                if log_error:
+                    logger.info(f'Failed to read from {device_name}, restarting connection {e}')
+                    log_error = False
                 # break, and go back to outer loop
                 break
         
