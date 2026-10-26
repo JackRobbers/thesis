@@ -26,20 +26,30 @@
   }
 })
 
-#let measurement = cetz.canvas({
+#let measurement = cetz.canvas(length: 10pt, {
   import cetz.draw: *
-  let n = 3
+  let n = 5
   for i in range(- int(n / 2), int(n / 2) + 1) {
     let y = i * 5
     circle((0, y), radius: 2)
-    content((0, y), {set text(size: 30pt); [ Device ]})
+    content((0, y), {set text(size: 12pt); [ Device ]})
     line((2.5, y), (4.5, y))
     circle((7, y), radius: 2)
-    content((7, y),  {set text(size: 30pt); [ Plug ]})
+    content((7, y),  {set text(size: 12pt); [ Plug ]})
     cetz.decorations.wave(line((9.5, y), (15, y / 5)), amplitude: 0.2)
 
     circle((19, 0), radius: 3)
-    content((), {set text(size: 50pt); [ Laptop ]})
+    content((), {set text(size: 18pt); [ SBC ]})
+
+    line((23, 0), (26, 0), mark: (end: ">", fill: black))
+
+
+    // cell((29, 0), 6, [Timestamp])
+    // cell((35, 0), 7, [Power (mW)])
+    // cell((29, -2), 1, [2026])
+
+    content((34,0), table(columns: 2, [Timestamp] , [Power (mW)], [2026...], [1004], [2026...], [1050], [...], [...]))
+
   }
 })
 

@@ -10,6 +10,7 @@
 #import "@preview/numty:0.1.0" as nt
 #import "diagrams.typ": *
 
+#let config = yaml("common.yml")
 
 #let (source, display, result, output, outputs, render, Out) = callisto.config(
   nb: path("analysis.ipynb"),
@@ -123,17 +124,29 @@ My parents, siblings, housemates, and friends for their love and support.
 ))
 
 #pagebreak()
-
+#show outline.entry: it => link(
+  it.element.location(),
+  it.indented(it.prefix(), {if it.level == 1 {
+    text(it.inner(), weight: "bold")} else {
+      it.inner()
+    }}),
+)
 #outline()
 // #set heading(numbering: "Chapter", level: 1)
+#show heading.where(level: 1): it => {
+
+    set heading(numbering: "1", supplement: "Chapter")
+    [Chapter #counter(heading).get().at(0) \ #it.body]
+}
+
 #set heading(numbering: "1.1")
 #pagebreak()
 
-= Introduction
+= Introduction <intro>
 
 #todo("Summary of chapters?")
 
-= Background
+= Background <background>
 
 The Internet of Things global market is valued at around \$860 billion USD; twice as big as Artificial Intelligence @InternetThingsIoT @ArtificialIntelligenceMarket. There are around 24 Billion active devices. Year-on-Year growth in both value and device population is around 11% @NumberConnectedIoT. 
 
@@ -179,7 +192,7 @@ This paper shows that my approach has value but leaves many aspects unexplored. 
 
 A side channel is any channel that conveys information other than the intended. For IoT devices the intended channel is the generally the network. Anything that changes in response to internal state can be side-channel. Most side-channels vary in response to the same stimuli, so information leakage to one side channel may indicate leakage to the rest @wangHertzbleedTurningPower2023
 
-#figure(side-channels, caption: "Diagram showing potential side-channels of a networked device, all of these have been exploited in various ways in the literature.")
+#figure(side-channels, caption: "Possible side-channels of a networked device, all of these have been exploited in various ways in the literature.")
 
 In general, the more complicated or large a process is, the longer it takes and the more power it consumes. Doing nothing consumes less power than doing something. This has been a known attack since at least the 1990s, and was considered in the design of AES (Released in 2001) @chariSoundApproachesCounteract1999. Protecting against side channel attacks is up to both the design of the algorithm and the hardware implementation. Mitigations such as constant-time computing and data-masking, but these are likely to only be applied to directly security critical subsystems, due to their performance overheads.
 
@@ -189,9 +202,14 @@ Power analysis has two major approaches @chatterjeeHardwareSecurityConnected2022
 
 #emph("Differential"), where many samples of traces in different states are compared. Even very small differences in power can be observed. 
 
+
+
+
+= Measuring Power Consumption of IoT Devices
+
+In order to fingerprint IoT devices we need data to analyse. 
+
 === SafeNet Dataset
-
-
 
 The main paper similar to my work @zhouCatchingHackersWatching2026, made their data publicly available @SafeNetIoTPowerIDS2026. They recorded 33 different IoT devices across 5 categories (lights, audio, cameras, tv, appliances) and under a range of conditions both benign and hostile. So far I've only considered the idle scenario in my work, in order to determine the viability of a heuristic technique. Each trace is the power data measured using a smart plug at 1 Hz for around 40 minutes.
 
@@ -200,9 +218,6 @@ There are a number of limitations with this dataset:
 - Exact device models or hardware revisions were not recorded. A different model of the same device may have different power usage characteristics. 
 - Each device was recorded for a different length of time. To have a consistent dataset I've truncated the data so that each device has the same length of samples as the shortest device in the dataset. With 25 minutes of training data this leaves 12 minutes of unseen data.
 - The amount of available data is relatively small. I will replicate my results on my own dataset to address this.
-
-
-= Method
 
 == Analysis
 
@@ -225,15 +240,19 @@ To evaluate the performance of the classification we compute a confusion matrix,
 
 == Building Dataset
 
-The IoT lab contains a number of devices, currently investigating 6 of them.
+#figure(measurement, caption: [])
 
-Power is measured at 1 Hz, and measured continuously using a p110. This matches the SafeNet dataset.
+The UNSW EET IoT Lab has a library of many IoT devices. Can 
 
-#todo("any changes throughout the day?")
+Power is measured at 1 Hz, and measured continuously using a p110, t3he same method of measurement used in in the existing dataset
+
+#todo("any changes throughout the day? / long term trends")
 
 Another thesis student is conducting scans of the network, so we will coordinate to annotate data. However this won't represent the same active state as the device actually being used.
 
 Only have 2 matching devices, try to do similar ones for rest.
+
+
 
 #table(
   columns: 4,
@@ -282,12 +301,12 @@ The data windowing is controlled by two parameters, $w$ and $s$. These effect th
 #todo("Combine plots into 1?")
 #todo("Increase resolution, takes hours to run")
 
-#figure(image("assets/w_s_idle_10.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on IDLE data classfied by $mu$]) <w_s_idle>
-#figure(image("assets/w_s_active_10.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on ACTIVE data classified by $mu$]) <w_s_active>
+#figure(image("assets/w_s_idle_1.pdf"), caption: [Macro Average F1 score for all devices whilst varying $w$ and $s$ window parameters on IDLE data classified by $mu$]) <w_s_idle>
+#figure(image("assets/w_s_active_1.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on ACTIVE data classified by $mu$]) <w_s_active>
 
-From @w_s_idle and @w_s_active, we can conclude that performance is degraded if $w < 100$. After that performance slowly degrades as w increases. The impact of s is minor, so choose the largest value for computational speed. Choose to fix $w = 150$ and $s = 100$ for the rest of these results.
+From @w_s_idle and @w_s_active, we can conclude that performance is degraded if $w < 100$. After that performance slowly degrades as w increases. The impact of s is minor, so choose the largest value for computational speed. Choose to fix $w = #config.w$ and $s = #config.s$ for the rest of these results.
 
-
+Concerningly, therer
 
 == Idle
 
@@ -332,8 +351,7 @@ Naive technique, feels like it introduces some error, but all the devices have i
   }
 
   #figure(
-    // render_table(output("summary", item: 0)), caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = 300, s = 120. Sorted by the performance in Idle by $mu$] 
-    "aa"
+    render_table(output("summary", item: 0)), caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = 300, s = 120. Sorted by the performance in Idle by $mu$] 
   )
   <comparison>
   
@@ -353,6 +371,6 @@ Naive technique, feels like it introduces some error, but all the devices have i
 
 == Future Work
 
-= References
+= Bibliography
 
 #bibliography("Thesis.bib", title: none)

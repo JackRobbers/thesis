@@ -41,14 +41,17 @@ async def write_power(client, device_name, nickname, ip):
             device = await client.p110(ip)
             info = await device.get_device_info()
             if nickname != info.nickname:
-                raise ValueError
+                raise ValueError("IP address wrong?")
 
             filename= f"{directory}/{start.isoformat()}.csv"
 
             with open(filename, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(("Time","Power_mW"))
-                log_error = True
+
+                if not log_error:
+                    log_error = True
+                    logger.info(f"{device_name} working again")
         except Exception as e:
             if log_error:
                 logger.info(f"Failed to setup {device_name}, retrying: {e}")
@@ -62,8 +65,7 @@ async def write_power(client, device_name, nickname, ip):
                     response = await device.get_energy_usage()
                     writer = csv.writer(csvfile)
                     writer.writerow((response.local_time.isoformat(timespec="milliseconds"), response.current_power))
-                    log_error = True
-                    
+
                 await asyncio.sleep(1)
 
             except Exception as e:
