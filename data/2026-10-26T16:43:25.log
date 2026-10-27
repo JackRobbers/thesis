@@ -1,0 +1,47 @@
+2026-10-26 16:43:25 INFO     Starting with config: [['AmazonEchoShow5', 'A', 248], ['GoogleNestHub', 'B', 229], ['AppleHomePod', 'C', 212], ['EZVIZ', 'D', 134], ['Aotec', 'E', 214], ['GoogleHome', 'F', 133]]
+2026-10-26 16:57:19 INFO     Failed to read from AmazonEchoShow5, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.248/app/request?seq=-2024998791", source: TimedOut })
+2026-10-26 16:57:19 INFO     Failed to read from Aotec, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.214/app/request?seq=1950339823", source: TimedOut })
+2026-10-26 16:57:19 INFO     Failed to read from GoogleHome, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.133/app/request?seq=2076817873", source: TimedOut })
+2026-10-26 16:57:20 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.134/app/request?seq=2037518204", source: TimedOut })
+2026-10-26 16:57:21 INFO     Failed to read from AppleHomePod, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.212/app/request?seq=1087338510", source: TimedOut })
+2026-10-26 16:57:21 INFO     Failed to read from GoogleNestHub, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.229/app/request?seq=-50825889", source: TimedOut })
+2026-10-26 17:00:56 INFO     Aotec working again
+2026-10-26 17:00:56 INFO     AppleHomePod working again
+2026-10-26 17:00:56 INFO     GoogleHome working again
+2026-10-26 17:00:56 INFO     AmazonEchoShow5 working again
+2026-10-26 17:00:56 INFO     GoogleNestHub working again
+2026-10-26 17:00:56 INFO     EZVIZ working again
+2026-10-27 00:01:56 INFO     Failed to read from AmazonEchoShow5, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.248/app/request?seq=2005948277", source: TimedOut })
+2026-10-27 00:01:56 INFO     Failed to read from AppleHomePod, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.212/app/request?seq=-162016667", source: TimedOut })
+2026-10-27 00:01:56 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.134/app/request?seq=-914416794", source: TimedOut })
+2026-10-27 00:01:56 INFO     Failed to read from GoogleNestHub, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.229/app/request?seq=500819737", source: TimedOut })
+2026-10-27 00:01:56 INFO     Failed to read from Aotec, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.214/app/request?seq=103429326", source: TimedOut })
+2026-10-27 00:01:56 INFO     Failed to read from GoogleHome, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.133/app/request?seq=927449506", source: TimedOut })
+2026-10-27 00:04:18 INFO     GoogleHome working again
+2026-10-27 00:04:18 INFO     GoogleNestHub working again
+2026-10-27 00:04:18 INFO     Aotec working again
+2026-10-27 00:04:18 INFO     AmazonEchoShow5 working again
+2026-10-27 00:04:19 INFO     AppleHomePod working again
+2026-10-27 10:54:35 INFO     Failed to read from GoogleNestHub, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:35 INFO     GoogleNestHub working again
+2026-10-27 10:54:35 INFO     Failed to read from Aotec, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:35 INFO     Failed to read from GoogleHome, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:35 INFO     GoogleHome working again
+2026-10-27 10:54:35 INFO     Failed to read from AmazonEchoShow5, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:35 INFO     Aotec working again
+2026-10-27 10:54:35 INFO     Failed to read from AppleHomePod, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:36 INFO     Failed to read from GoogleNestHub, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:36 INFO     AmazonEchoShow5 working again
+2026-10-27 10:54:36 INFO     AppleHomePod working again
+2026-10-27 10:54:36 INFO     GoogleNestHub working again
+2026-10-27 10:54:38 INFO     Failed to read from AppleHomePod, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:38 INFO     Failed to read from AmazonEchoShow5, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:39 INFO     Failed to read from GoogleNestHub, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:39 INFO     Failed to read from GoogleHome, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:39 INFO     Failed to read from Aotec, restarting connection Tapo(Unauthorized { kind: "SESSION_TIMEOUT", description: "Session has expired. Re-authentication is required." })
+2026-10-27 10:54:39 INFO     Aotec working again
+2026-10-27 10:54:39 INFO     AppleHomePod working again
+2026-10-27 10:54:39 INFO     AmazonEchoShow5 working again
+2026-10-27 10:54:39 INFO     GoogleNestHub working again
+2026-10-27 10:54:39 INFO     GoogleHome working again
+2026-10-27 10:54:57 INFO     Program Killed

@@ -1,0 +1,3 @@
+2026-10-26 16:41:38 INFO     Starting with config: [['AmazonEchoShow5', 'A', 248], ['GoogleNestHub', 'B', 229], ['AppleHomePod', 'C', 212], ['EZVIZ', 'D', 133], ['Aotec', 'E', 214], ['GoogleHome', 'F', 134]]
+2026-10-26 16:41:38 INFO     Failed to setup EZVIZ, retrying: IP address wrong?
+2026-10-26 16:41:38 INFO     Failed to setup GoogleHome, retrying: IP address wrong?
