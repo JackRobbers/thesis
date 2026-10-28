@@ -120,13 +120,15 @@
 This thesis makes the following contributions: 
 
 - A method of effectively classifying IoT devices by their power. Uses simple features and no machine-learning.
-- A new dataset of IoT device power traces and a robust tooling for recording new data. #todo([Correlated with Chris?])
+- A new dataset of IoT device power traces and a robust tooling for recording new data.
 
 = Background <background>
 
 The Internet of Things global market is valued at around \$860 billion USD; twice as big as Artificial Intelligence @InternetThingsIoT @ArtificialIntelligenceMarket. There are around 24 Billion active devices. Year-on-Year growth in both value and device population is around 11% @NumberConnectedIoT. 
 
 Since Internet of Things is simply any network connected object, there is massive diversity in the devices. This heterogeneity presents a number of problems with managing these systems. A lack of regulation and push for cheap devices has left a vast attack surface of unmaintained and insecure devices. Botnets and widespread attacks have plagued IoT for many years @OfficePublicAffairs2024 @HackersTakeControl2024. 
+
+Most recently, hackers were able to remotely attack supermarket fridges across Europe. @HundredsFrenchSupermarkets2026
 
 One tool that can counter insecure devices is profiling. An external device can profile without any modification to the often resource constrained edge IoT nodes. A effective profile of a device can then allow for abnormalities to be detected and devices to be monitored. This has a range of applications across enterprise and the home.
 
@@ -189,7 +191,9 @@ Power analysis has two major approaches @chatterjeeHardwareSecurityConnected2022
 
 = Measuring Power of IoT Devices <data>
 
-To evaluate and develop fingerprinting and profiling methods for IoT devices, datasets are required. My work uses two different ones: The Safe
+In order to evaluate and develop fingerprinting and profiling methods for IoT devices, datasets are required. My work uses two different ones: The SafeNetIoT Dataset @SafeNetIoTPowerIDS2026 developed for Zhou et al @zhouCatchingHackersWatching2026a and a new dataset created for this thesis.
+
+Both use the same method of measurement, a cheap consumer grade  
 
 == SafeNetIoT Dataset
 
@@ -199,33 +203,41 @@ They measured the power at 1 Hz of 33 different IoT devices using a Tapo P110 Sm
 
 #todo[summary diagram22]
 
-There are a number of limitations of this dataset:
-- The amount of available data is small with each trace lasting around 40 minutes and there is only 1 trace per situation.
+The amount of available data is small with each trace lasting around 40 minutes and there is only 1 trace per situation. If some data is used for training and setting a baseline of the device this leaves very little unknown data for verification. 
+
+A number of more minor limitations of this dataset:
+
+- Data is recorded only at 1 Hz, which is well below common supply frequencies, so modulation of this frequency when internal components of will not be detectable. This means that frequency analysis techniques are unlikely to be useful. The features would likely be strong identifiers as used in 
 - Exact device models or software versions were not recorded. A different model of the "same" device may have different power usage characteristics. 
 - The idle data for the Echo Dot 3 is truncated to 1 minute of data, hence I haven't considered it in my work.
 - Each device was recorded for a different length of time. To have a consistent dataset I've truncated the data so that each device has the same length of samples as the shortest device in the dataset. With 25 minutes of training data this leaves 12 minutes of unseen data.
-- Data is recorded only at 1 Hz, which is well below common supply frequencies, so modulation of this frequency when internal components of will not be detectable. This means that frequency analysis techniques are unlikely to be useful.
 
 
 
 
 == My Dataset
 
-It addresses some of the limitations 
+Attempt to supplement and address some of the limitations of the SafeNetIoT. Adding replication to Zhou et al @zhouCatchingHackersWatching2026a
+
+The UNSW EET IoT Lab has a library of many IoT devices. I chose to study tho. The main improvement over the dataset is the length of data available. This will improve the quality and reliability of results from this.
+
+Just like in the SafeNetIoT dataset, power is measured at 1 Hz using a Tapo P110. 
+
+#figure(measurement, caption: [The measurement setup])
+
+Data is obtained by the  
 
 
-The UNSW EET IoT Lab has a library of many IoT devices. Can 
+#todo("any changes throughout the day? / long term trends. Check validity, are days largely self similar?")
 
-Power is measured at 1 Hz, and measured continuously using a p110, t3he same method of measurement used in in the existing dataset
+The IoT Lab is not a completely controlled environment, the network is open
 
-#figure(measurement, caption: [])
-#todo("any changes throughout the day? / long term trends")
-
-Another thesis student is conducting scans of the network, so we will coordinate to annotate data. However this won't represent the same active state as the device actually being used.
+#todo([Correlated with Chris?])
+Another thesis student is conducting scans of the network, so we will coordinate to annotate data. However this usage is not the same as 
 
 Only have 2 matching devices, try to do similar ones for rest.
 
-
+#todo([Write down software revisions])
 
 #table(
   columns: 4,
@@ -357,6 +369,12 @@ caption: [Comparison of F1 scores between idle and active datasets and either $m
 Let's investigate them in detail
 
 == Combining Active and Idle
+
+== Applying to My Dataset
+
+As discussed above, the reliability of results from the SafeNetIoT dataset is limited, replicate on the dataset.
+
+
 
 = Conclusion
 

@@ -28,18 +28,18 @@
 
 #let measurement = cetz.canvas(length: 10pt, {
   import cetz.draw: *
-  let n = 5
+  let n = 3
   for i in range(- int(n / 2), int(n / 2) + 1) {
     let y = i * 5
     circle((0, y), radius: 2)
-    content((0, y), {set text(size: 12pt); [ Device ]})
+    content((0, y), {align(center, text(size: 10pt)[ Device \ #(calc.round(-i + n/2))])})
     line((2.5, y), (4.5, y))
     circle((7, y), radius: 2)
     content((7, y),  {set text(size: 12pt); [ Plug ]})
     cetz.decorations.wave(line((9.5, y), (15, y / 5)), amplitude: 0.2)
 
     circle((19, 0), radius: 3)
-    content((), {set text(size: 18pt); [ SBC ]})
+    content((), {set text(size: 18pt); [ Server ]})
 
     line((23, 0), (26, 0), mark: (end: ">", fill: black))
 
