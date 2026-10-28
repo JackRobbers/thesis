@@ -9,6 +9,10 @@
 #import "@preview/cetz:0.5.2"
 #import "@preview/numty:0.1.0" as nt
 #import "diagrams.typ": *
+#import "@preview/tblr:0.5.0": *
+#import "@preview/zero:0.7.1": num, format-table, zi
+
+#show: eestyle2
 
 #let config = yaml("common.yml")
 
@@ -46,11 +50,7 @@
     styled_cell
   }
 
-#let look-at-in-meeting(h) = {
-    heading(level: 1)[$arrow$ #h]
-}
-
-#show: eestyle2
+#set heading(supplement: "Chapter")
 
 
 // TODO: criticise dataset, not specific on what devices
@@ -61,7 +61,7 @@
   #large([*SCHOOL OF ELECTRICAL ENGINEERING\
   AND TELECOMMUNICATIONS*])
   #v(1cm)
-  #huge([*Thesis C*])
+  #huge([*Profiling IoT Devices using Power \ Side Channel Techniques*])
 
   #Large([by])
   #v(-0.2cm)
@@ -84,46 +84,15 @@
 #set page(numbering: "1.")
 
 #align(center + horizon)[
-  *Abstract*
+  #heading([Abstract], outlined: false)
   
   #todo("update abstract")
 
 ]
-
-
 #pagebreak()
 
-= Acknowledgements
 
-The understanding and encouraging help of my supervisor, Hassan Habibi Gharakheili.
 
-My parents, siblings, housemates, and friends for their love and support.
-
-#pagebreak()
-
-= Abbreviations
-
-#todo("update from thesis c")
-
-#let abbreviate(defs) = {
-  grid(
-    columns: (40pt, 1fr), row-gutter: 2%,
-    ..for def in defs.sorted() {
-      (strong(def.at(0)), def.at(1))
-    }
-  )
-}
-
-#abbreviate((
-  ("DDOS", "Direct Denial of Service"),
-  ("IoT", "Internet of Things"),
-  ("ICMP", "Internet Control Message Protocol"),
-  ("AES", "Advanced Encryption Standard"),
-  ("IETF", "Internet Engineering Task Force"),
-  ("MUD", "Manufacturer Usage Description"),
-))
-
-#pagebreak()
 #show outline.entry: it => link(
   it.element.location(),
   it.indented(it.prefix(), {if it.level == 1 {
@@ -131,11 +100,13 @@ My parents, siblings, housemates, and friends for their love and support.
       it.inner()
     }}),
 )
+
 #outline()
 // #set heading(numbering: "Chapter", level: 1)
 #show heading.where(level: 1): it => {
 
     set heading(numbering: "1", supplement: "Chapter")
+    pagebreak()
     [Chapter #counter(heading).get().at(0) \ #it.body]
 }
 
@@ -144,7 +115,12 @@ My parents, siblings, housemates, and friends for their love and support.
 
 = Introduction <intro>
 
-#todo("Summary of chapters?")
+#todo("Summary of chapters")
+
+This thesis makes the following contributions: 
+
+- A method of effectively classifying IoT devices by their power. Uses simple features and no machine-learning.
+- A new dataset of IoT device power traces and a robust tooling for recording new data. #todo([Correlated with Chris?])
 
 = Background <background>
 
@@ -158,13 +134,19 @@ Existing research on profiling IoT devices focuses on network traffic, which is 
 
 I've chosen to investigate power due to the following properties:
 
-#emph("Universal"), every IoT device uses power. A profiling solution will work on all devices. Network traffic also has this property, but some possible other channels like temperature do not.
+#emph("Universal"), every electronic device uses power. Network traffic is almost as universal, discounting air-gapped devices. Other side channels such as sound or 
 
 #emph("Continuous"), unlike discrete network packets or flows power is continuous, the sum of the individual power consumed by every component of the device. These can each vary depending on the manufacturing differences and the current state of the device. Network traffic is sent intermittently and isn't directly tied to the internal state, some of this continuous information can be captured in timing variations.
 
 #emph("Accessible"), non-invasive. Measuring externally powered devices doesn't require any modification to the device. There is the major limitation that battery powered devices would require software and potentially hardware modifications to report their power, hence they are not considered in thesis.
 
-== Literature Review and Prior Work
+== Prior Work
+
+Profiling of IoT Devices is a well studied field. Most work uses features derived from network traffic, but there is some use of power measurements. 
+
+Side Channel Analysis has also been extensively studied. from it leaking sensitive data and internal state, rather than as a monitoring tool.
+
+This thesis aims to explore both of those gaps in the literature.
 
 === Profiling and Fingerprinting
 
@@ -202,50 +184,41 @@ Power analysis has two major approaches @chatterjeeHardwareSecurityConnected2022
 
 #emph("Differential"), where many samples of traces in different states are compared. Even very small differences in power can be observed. 
 
+=== MCSA / ESA
 
 
+= Measuring Power of IoT Devices <data>
 
-= Measuring Power Consumption of IoT Devices
+To evaluate and develop fingerprinting and profiling methods for IoT devices, datasets are required. My work uses two different ones: The Safe
 
-In order to fingerprint IoT devices we need data to analyse. 
+== SafeNetIoT Dataset
 
-=== SafeNet Dataset
+The data from Zhou et al @zhouCatchingHackersWatching2026a, is publicly available on Github @SafeNetIoTPowerIDS2026. 
 
-The main paper similar to my work @zhouCatchingHackersWatching2026, made their data publicly available @SafeNetIoTPowerIDS2026. They recorded 33 different IoT devices across 5 categories (lights, audio, cameras, tv, appliances) and under a range of conditions both benign and hostile. So far I've only considered the idle scenario in my work, in order to determine the viability of a heuristic technique. Each trace is the power data measured using a smart plug at 1 Hz for around 40 minutes.
+They measured the power at 1 Hz of 33 different IoT devices using a Tapo P110 Smart Plug. They group the devices into 5 categories (lights, audio, cameras, tv, appliances) based on the type and functionality. I've only examined the benign idle and active scenarios as these represent typical operation of the devices.
 
-There are a number of limitations with this dataset:
+#todo[summary diagram22]
+
+There are a number of limitations of this dataset:
+- The amount of available data is small with each trace lasting around 40 minutes and there is only 1 trace per situation.
+- Exact device models or software versions were not recorded. A different model of the "same" device may have different power usage characteristics. 
 - The idle data for the Echo Dot 3 is truncated to 1 minute of data, hence I haven't considered it in my work.
-- Exact device models or hardware revisions were not recorded. A different model of the same device may have different power usage characteristics. 
 - Each device was recorded for a different length of time. To have a consistent dataset I've truncated the data so that each device has the same length of samples as the shortest device in the dataset. With 25 minutes of training data this leaves 12 minutes of unseen data.
-- The amount of available data is relatively small. I will replicate my results on my own dataset to address this.
+- Data is recorded only at 1 Hz, which is well below common supply frequencies, so modulation of this frequency when internal components of will not be detectable. This means that frequency analysis techniques are unlikely to be useful.
 
-== Analysis
 
-#todo("Two paths here / two diagrams?")
 
-#figure(
-    process
-  , caption: [Method overview]
-)
 
-Each device's data is split into two sections: 25 minutes of training data to extra classes and 12 minutes of unseen data for evaluation. The data is further split into windows of width $w$ seconds with a gap of $s$ seconds between left edges of windows. 
+== My Dataset
 
-For each window in the training data, a metric is evaluated. The median value across all windows is recorded as the unique signature of each device. Currently the only metric is the mean. In the future this could be any characteristic.
+It addresses some of the limitations 
 
-For each window in the unseen data, we classify by minimising the distance to the medians for each device computed earlier. This is quite a naive approach and will not work when combining multiple metrics as median only makes sense in 1 dimension. 
-
-To evaluate the performance of the classification we compute a confusion matrix, this shows how often a device is classified as each other device. If all classes were classified correctly there would be a fully diagonal line. From this we evaluate the precision and F1 score for each class.
-
- For the overall performance of a test we evaluate the macro average F1 score, this is simply the unweighted mean of all F1 scores of each class.
-
-== Building Dataset
-
-#figure(measurement, caption: [])
 
 The UNSW EET IoT Lab has a library of many IoT devices. Can 
 
 Power is measured at 1 Hz, and measured continuously using a p110, t3he same method of measurement used in in the existing dataset
 
+#figure(measurement, caption: [])
 #todo("any changes throughout the day? / long term trends")
 
 Another thesis student is conducting scans of the network, so we will coordinate to annotate data. However this won't represent the same active state as the device actually being used.
@@ -291,22 +264,46 @@ Only have 2 matching devices, try to do similar ones for rest.
   // [Tapo smart plug], [], [], [],
 )
 
-= Results and Discussion
+
+
+
+
+= Fingerprinting and Profiling IoT Devices <results>
+
+After read
+
+== Analysis
+
+#todo("Two paths here / two diagrams?")
+
+#figure(
+    process
+  , caption: [Method overview]
+)
+
+Each device's data is split into two sections: 25 minutes of training data to extra classes and 12 minutes of unseen data for evaluation. The data is further split into windows of width $w$ seconds with a gap of $s$ seconds between left edges of windows. 
+
+For each window in the training data, a metric is evaluated. The median value across all windows is recorded as the unique signature of each device. Currently the only metric is the mean. In the future this could be any characteristic.
+
+For each window in the unseen data, we classify by minimising the distance to the medians for each device computed earlier. This is quite a naive approach and will not work when combining multiple metrics as median only makes sense in 1 dimension. 
+
+To evaluate the performance of the classification we compute a confusion matrix, this shows how often a device is classified as each other device. If all classes were classified correctly there would be a fully diagonal line. From this we evaluate the precision and F1 score for each class.
+
+ For the overall performance of a test we evaluate the macro average F1 score, this is simply the unweighted mean of all F1 scores of each class.
 
 == Determining appropriate values of window parameters
 
 The data windowing is controlled by two parameters, $w$ and $s$. These effect the performance of the metrics,  $w$ was varied from 10 to 600, at a resolution of 10 seconds. 600 seconds = 10 minutes was chosen as the upper limit because with our split there is only 10 minutes of training data. A very long window also increases the latency of the classification when operating in a real time environment. Preliminary results showed that $s$ had a minor effect compared to $w$, so only a few values.
 
 
-#todo("Combine plots into 1?")
-#todo("Increase resolution, takes hours to run")
+#todo("Combine plots into 1?, memoise ")
 
 #figure(image("assets/w_s_idle_1.pdf"), caption: [Macro Average F1 score for all devices whilst varying $w$ and $s$ window parameters on IDLE data classified by $mu$]) <w_s_idle>
 #figure(image("assets/w_s_active_1.pdf"), caption: [F1 score performance whilst varying $w$ and $s$ window parameters on ACTIVE data classified by $mu$]) <w_s_active>
 
-From @w_s_idle and @w_s_active, we can conclude that performance is degraded if $w < 100$. After that performance slowly degrades as w increases. The impact of s is minor, so choose the largest value for computational speed. Choose to fix $w = #config.w$ and $s = #config.s$ for the rest of these results.
+From @w_s_idle and @w_s_active, we can observe that the performance is the worst if $w < 100$. After that performance slowly degrades as w increases. The impact of s is minor, so choose the largest value for computational speed. Choose to fix $w = #config.w$ and $s = #config.s$ for the rest of these results.
 
-Concerningly, therer
+Concerningly, there is a lot of variation 
 
 == Idle
 
@@ -340,21 +337,15 @@ Naive technique, feels like it introduces some error, but all the devices have i
 == Centroid Classifier
 
 == Summary Table / Problematic Devices
- 
 #[
-  #show table.cell.where(body: [1.000]): it => {
-    highlight(fill: green)[#it]
-  }
-
-   #show table.cell.where(y: 33): it => {
-    [*#it*]
-  }
-
+  // #show table.cell.where(body: [1.000]): it => {
+  //   highlight(fill: green)[#it]
+  // }
   #figure(
-    render_table(output("summary", item: 0)), caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = 300, s = 120. Sorted by the performance in Idle by $mu$] 
+    image("assets/table_summary.pdf"),
+caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = #config.w, s = #config.s. Sorted by the performance in Idle by $mu$] 
   )
   <comparison>
-  
 ]
 
 @comparison compares the performances of all devices in the both the idle and active datasets. 
@@ -363,13 +354,19 @@ Naive technique, feels like it introduces some error, but all the devices have i
 
 - The performance can degrade by adding the additional metric (e.g Google Nest in Idle), I need to investigate further, but this can happen.
 
-- The worst devices are: Honeywell Thermostat, Weekett Kettle, Antella Light, Leopro Light, Echo Spot 5 Speaker
+- The worst devices are: Honeywell Thermostat, Weekett Kettle, Antela Light, Leopro Light, Echo Spot 5 Speaker
+
+Let's investigate them in detail
 
 
 
 = Conclusion
 
 == Future Work
+
+- attacks, SafeNetIoT code to replicate
+- combine with network
+- disagreegation
 
 = Bibliography
 

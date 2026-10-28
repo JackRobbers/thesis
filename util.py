@@ -511,6 +511,18 @@ class Experiment:
             scores[self.data[i]] = 0 if tp == 0 else tp / (tp + fp)
         return scores
 
+    def get_device(self, name: str) -> Device:
+        for device in self.devices:
+            if device.nice_name == name or device.dir_name == name:
+                return device
+        raise ValueError(name)
+
+    def get_data(self, device, state) -> Data:
+        for data in self.data:
+            if data.device == device and data.state == state:
+                return data
+        raise ValueError(device, state)
+
 
 def sort_dict_by_value(dict, key=lambda x: x[1], reverse=False):
     """
