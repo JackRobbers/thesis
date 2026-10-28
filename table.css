@@ -1,0 +1,47 @@
+
+table {
+    border: none;
+    border-collapse: collapse;
+    border-spacing: 0;
+    color: black;
+    font-size: 15px;
+    table-layout: auto;
+    width: 100%;
+}
+thead {
+    border-bottom: 1px solid black;
+    vertical-align: bottom;
+}
+tr, th, td {
+    text-align: right;
+    vertical-align: middle;
+    padding: 0.2em 0.2em;
+    line-height: normal;
+    white-space: normal;
+    max-width: none;
+    border: none;
+    font-weight: normal;
+}
+tr:nth-last-child(1) th {
+    font-weight: bold;
+}
+tbody tr:nth-child(odd) {
+    background: #f5f5f5;
+}
+tbody tr:hover {
+    background: rgba(66, 165, 245, 0.2);
+}
+
+.row_heading, .index_name {  
+  /* your stuff here */
+  text-align: left;
+}
+body {
+    margin: 0
+    /* width:  */
+}
+
+@page {
+    size: auto;
+    margin: 0
+}

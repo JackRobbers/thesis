@@ -334,8 +334,6 @@ Naive technique, feels like it introduces some error, but all the devices have i
 
 // == By first harmonic
 
-== Centroid Classifier
-
 == Summary Table / Problematic Devices
 #[
   // #show table.cell.where(body: [1.000]): it => {
@@ -343,7 +341,7 @@ Naive technique, feels like it introduces some error, but all the devices have i
   // }
   #figure(
     image("assets/table_summary.pdf"),
-caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = #config.w, s = #config.s. Sorted by the performance in Idle by $mu$] 
+caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = #config.w, s = #config.s.] 
   )
   <comparison>
 ]
@@ -358,7 +356,7 @@ caption: [Comparison of F1 scores between idle and active datasets and either $m
 
 Let's investigate them in detail
 
-
+== Combining Active and Idle
 
 = Conclusion
 
