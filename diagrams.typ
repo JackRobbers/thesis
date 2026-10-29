@@ -107,3 +107,5 @@
       //  rect((3, 0), (5, 2), name: "window")
       //  content((rel: (0, -.4), to: "window.south"), [Window])
     })
+
+#let model

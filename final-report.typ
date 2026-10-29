@@ -336,6 +336,8 @@ There is a lot of variation in performance, just seems that there isn't enough d
 
 == Classification by $mu$
 
+#figure(model)
+
 Using the fixed values of w and s above, we compute the confusion matrices. A confusion matrix shows how often a window in the training data is correctly classified. This is applied across both the idle and active datasets. 
 
 From the confusion matrix two overall measures are calculated, the Macro Average F1 score and the number of devices with high precision. The first is the equally weighted mean (as opposed to a weighted mean which could be used if information about the prevalence of the means was know) of the F1 scores. The F1 score is the . 

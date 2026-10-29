@@ -175,18 +175,24 @@ class Context:
     [Antela Light, Fitop Light, LIFX Light, Lepro Light, Tapo Light]
     """
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, categories=True):
+        # TODO remove hardcoding from powerids
         self.path = path
-        self.categories = sorted(os.listdir(path), key=category_sort_order)
-        self.devices = sorted(
-            [
-                Device(device, category)
-                for category in self.categories
-                for device in os.listdir(f"{path}/{category}")
-                if device != "echodot3"
-            ],
-            key=lambda device: (category_sort_order(device.category), device.name()),
-        )
+        if categories:
+            self.categories = sorted(os.listdir(path), key=category_sort_order)
+            self.devices = sorted(
+                [
+                    Device(device, category)
+                    for category in self.categories
+                    for device in os.listdir(f"{path}/{category}")
+                    if device != "echodot3"
+                    if os.path.isdir(f"{path}/{category}/{device}")
+                ],
+                key=lambda device: (category_sort_order(device.category), device.name()),
+            )
+        else: 
+            self.devices = [Device(device, None) for device in os.listdir(path) if os.path.isdir(f"{path}/{device}")]
+
 
     def device_from_name(self, device_name):
         return [device for device in self.devices if device.dir_name == device_name][0]
