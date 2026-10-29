@@ -591,7 +591,7 @@ def graph_confusion_matrix(exp: Experiment):
     # fig.set_dpi(400)
     # fig.
     filename = f"assets/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
-    print(f"Wrote graph to {filename}")
+    # print(f"Wrote graph to {filename}")
     fig.savefig(filename
         , bbox_inches="tight"
     )

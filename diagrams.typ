@@ -29,26 +29,27 @@
 #let measurement = cetz.canvas(length: 10pt, {
   import cetz.draw: *
   let n = 3
-  for i in range(- int(n / 2), int(n / 2) + 1) {
+  for (x, i) in range(- int(n / 2), int(n / 2) + 1).enumerate() {
     let y = i * 5
     circle((0, y), radius: 2)
-    content((0, y), {align(center, text(size: 10pt)[ Device \ #(calc.round(-i + n/2))])})
+    content((0, y), {align(center, text(size: 10pt)[ Device \ #(n - x)])})
     line((2.5, y), (4.5, y))
     circle((7, y), radius: 2)
-    content((7, y),  {set text(size: 12pt); [ Plug ]})
+    content((7, y),  {align(center, text(size: 10pt)[ Plug \ #(n - x)])})
     cetz.decorations.wave(line((9.5, y), (15, y / 5)), amplitude: 0.2)
 
     circle((19, 0), radius: 3)
     content((), {set text(size: 18pt); [ Server ]})
 
-    line((23, 0), (26, 0), mark: (end: ">", fill: black))
+    line((23, 0), (25, 0), mark: (end: ">", fill: black))
 
 
     // cell((29, 0), 6, [Timestamp])
     // cell((35, 0), 7, [Power (mW)])
     // cell((29, -2), 1, [2026])
+    
 
-    content((34,0), table(columns: 2, [Timestamp] , [Power (mW)], [2026...], [1004], [2026...], [1050], [...], [...]))
+    content((34,0), [#set text(size: 10pt); 2026-10-22T10:14:04.15.csv #v(-10pt) #table(columns: 2, [Timestamp] , [Power (mW)], [2026-10-22T10:14:04.15], [1004], [2026-10-22T10:14:04.16], [1050], [...], [...])])
 
   }
 })
