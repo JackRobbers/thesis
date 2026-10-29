@@ -1,1 +1,48 @@
 2026-10-27 10:55:15 INFO     Starting with config: [['AmazonEchoShow5', 'A', 248], ['GoogleNestHub', 'B', 229], ['AppleHomePod', 'C', 212], ['EZVIZ', 'D', 131], ['Aotec', 'E', 214], ['GoogleHome', 'F', 133]]
+2026-10-27 12:29:36 INFO     Failed to read from AppleHomePod, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.212/app/request?seq=-1920890714", source: TimedOut })
+2026-10-27 12:29:36 INFO     Failed to read from Aotec, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.214/app/request?seq=-1272993765", source: TimedOut })
+2026-10-27 12:29:36 INFO     Failed to read from GoogleNestHub, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.229/app/request?seq=691846423", source: TimedOut })
+2026-10-27 12:29:36 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.131/app/request?seq=2052363398", source: TimedOut })
+2026-10-27 12:29:36 INFO     Failed to read from GoogleHome, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.133/app/request?seq=-637957952", source: TimedOut })
+2026-10-27 12:29:36 INFO     Failed to read from AmazonEchoShow5, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.248/app/request?seq=911291802", source: TimedOut })
+2026-10-27 12:34:23 INFO     AmazonEchoShow5 working again
+2026-10-27 12:34:23 INFO     GoogleHome working again
+2026-10-27 12:34:23 INFO     AppleHomePod working again
+2026-10-27 12:34:23 INFO     EZVIZ working again
+2026-10-27 12:34:23 INFO     GoogleNestHub working again
+2026-10-27 12:34:23 INFO     Aotec working again
+2026-10-27 16:32:36 INFO     Failed to read from AmazonEchoShow5, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.248/app/request?seq=-217588746", source: hyper_util::client::legacy::Error(SendRequest, hyper::Error(IncompleteMessage)) })
+2026-10-27 16:32:36 INFO     AmazonEchoShow5 working again
+2026-10-27 16:32:37 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.131/app/request?seq=-866900876", source: hyper_util::client::legacy::Error(SendRequest, hyper::Error(IncompleteMessage)) })
+2026-10-27 16:32:37 INFO     EZVIZ working again
+2026-10-28 00:02:22 INFO     Failed to read from AppleHomePod, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.212/app/request?seq=1897436691", source: TimedOut })
+2026-10-28 00:02:23 INFO     Failed to read from GoogleHome, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.133/app/request?seq=2134239811", source: TimedOut })
+2026-10-28 00:02:23 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.131/app/request?seq=163009606", source: TimedOut })
+2026-10-28 00:02:23 INFO     Failed to read from AmazonEchoShow5, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.248/app/request?seq=617364285", source: TimedOut })
+2026-10-28 00:02:23 INFO     Failed to read from Aotec, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.214/app/request?seq=-560634786", source: TimedOut })
+2026-10-28 00:02:23 INFO     Failed to read from GoogleNestHub, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.229/app/request?seq=1567681825", source: TimedOut })
+2026-10-28 00:04:44 INFO     AmazonEchoShow5 working again
+2026-10-28 00:04:44 INFO     Aotec working again
+2026-10-28 00:04:44 INFO     GoogleHome working again
+2026-10-28 00:04:44 INFO     AppleHomePod working again
+2026-10-28 00:04:44 INFO     GoogleNestHub working again
+2026-10-28 00:04:44 INFO     EZVIZ working again
+2026-10-28 00:47:26 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.131/app/request?seq=-909743402", source: hyper_util::client::legacy::Error(SendRequest, hyper::Error(IncompleteMessage)) })
+2026-10-28 00:47:26 INFO     EZVIZ working again
+2026-10-28 12:15:47 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.131/app/request?seq=658501423", source: hyper_util::client::legacy::Error(SendRequest, hyper::Error(IncompleteMessage)) })
+2026-10-28 12:15:47 INFO     EZVIZ working again
+2026-10-28 12:16:09 INFO     Failed to read from Aotec, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.214/app/request?seq=-1552112278", source: hyper_util::client::legacy::Error(SendRequest, hyper::Error(IncompleteMessage)) })
+2026-10-28 12:16:09 INFO     Aotec working again
+2026-10-28 12:16:11 INFO     Failed to read from AmazonEchoShow5, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.248/app/request?seq=387892033", source: hyper_util::client::legacy::Error(SendRequest, hyper::Error(IncompleteMessage)) })
+2026-10-28 12:16:12 INFO     AmazonEchoShow5 working again
+2026-10-29 00:01:49 INFO     Failed to read from Aotec, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.214/app/request?seq=1496566138", source: TimedOut })
+2026-10-29 00:01:49 INFO     Failed to read from GoogleNestHub, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.229/app/request?seq=-935596088", source: TimedOut })
+2026-10-29 00:01:50 INFO     Failed to read from AppleHomePod, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.212/app/request?seq=1030780948", source: TimedOut })
+2026-10-29 00:01:50 INFO     Failed to read from AmazonEchoShow5, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.248/app/request?seq=480380303", source: TimedOut })
+2026-10-29 00:01:50 INFO     Failed to read from EZVIZ, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.131/app/request?seq=1439368177", source: TimedOut })
+2026-10-29 00:01:50 INFO     Failed to read from GoogleHome, restarting connection Http(reqwest::Error { kind: Request, url: "http://192.168.1.133/app/request?seq=-1983726375", source: TimedOut })
+2026-10-29 00:04:07 INFO     GoogleNestHub working again
+2026-10-29 00:04:07 INFO     AmazonEchoShow5 working again
+2026-10-29 00:04:07 INFO     Aotec working again
+2026-10-29 00:04:07 INFO     AppleHomePod working again
+2026-10-29 00:04:07 INFO     GoogleHome working again
