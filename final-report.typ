@@ -312,7 +312,9 @@ For each window in the training data, a metric is evaluated. The median value ac
 
 #todo("graphic showing classification by distance")
 
-For each window in the unseen data, we classify by minimising the distance to the medians for each device computed earlier. This is quite a naive approach and will not work when combining multiple metrics as median only makes sense in 1 dimension. 
+For each window in the unseen data, we classify by minimising the distance to the medians for each device computed earlier. 
+
+Optionally a threshold can be added governing the ratio between the the matched class and the next closest class.
 
 To evaluate the performance of the classification we compute a confusion matrix, this shows how often a device is classified as each other device. If all classes were classified correctly there would be a fully diagonal line. From this we evaluate the precision and F1 score for each class.
 

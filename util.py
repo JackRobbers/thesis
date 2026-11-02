@@ -2,10 +2,12 @@ from enum import StrEnum, Enum
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-import os
+from os import PathLike, listdir, path
+from pathlib import Path
 from colorhash import ColorHash
 from collections import Counter
 import pprint
+from itertools import islice
 
 pp = pprint.PrettyPrinter(indent=4, width=100)
 
@@ -175,23 +177,23 @@ class Context:
     [Antela Light, Fitop Light, LIFX Light, Lepro Light, Tapo Light]
     """
 
-    def __init__(self, path: str, categories=True):
+    def __init__(self, base_path: str, categories=True):
         # TODO remove hardcoding from powerids
-        self.path = path
+        self.path = Path(base_path)
         if categories:
-            self.categories = sorted(os.listdir(path), key=category_sort_order)
+            self.categories = sorted(listdir(self.path), key=category_sort_order)
             self.devices = sorted(
                 [
                     Device(device, category)
                     for category in self.categories
-                    for device in os.listdir(f"{path}/{category}")
+                    for device in listdir(f"{self.path}/{category}")
                     if device != "echodot3"
-                    if os.path.isdir(f"{path}/{category}/{device}")
+                    if path.isdir(f"{self.path}/{category}/{device}")
                 ],
                 key=lambda device: (category_sort_order(device.category), device.name()),
             )
         else: 
-            self.devices = [Device(device, None) for device in os.listdir(path) if os.path.isdir(f"{path}/{device}")]
+            self.devices = [Device(device, None) for device in listdir(self.path) if path.isdir(f"{self.path}/{device}")]
 
 
     def device_from_name(self, device_name):
@@ -325,6 +327,7 @@ class Experiment:
         classify_by: Classifier,
         w,
         s,
+        threshold = None,
         include=[],
     ):
         if w > 600:
@@ -335,6 +338,7 @@ class Experiment:
         self.classify_by = classify_by
         self.w: int = w
         self.s: int = s
+        self.threshold = threshold
         if include == []:
             include = list(map(lambda device: device.dir_name, context.devices))
         self.devices = [
@@ -422,22 +426,25 @@ class Experiment:
             # find the closest training point for this
             # loop over all the testing windows
             for window_to_classify in testing_profile:
-                closest_prediction = None
-                dist = np.inf
-                for predicted, training in training_profiles.items():
-                    new_dist = np.sum(
+                # closest_prediction = None
+                # dist = np.inf
+                dists = list(islice(sort_dict_by_value({predicted : np.sqrt(np.sum(
                         [
                             (window_to_classify[metric] - training[metric]) ** 2
                             for metric in self.metrics
                         ]
-                    )
+                    )) for predicted, training in training_profiles.items()}).items(), 2))
 
-                    if new_dist < dist:
-                        closest_prediction = predicted
-                        dist = new_dist
-                # weird cheat around the None
-                if closest_prediction:
-                    closest.append(closest_prediction)
+                # TODO way to report dists / ratios?
+                # ratio should judge the relative size. a smaller threshold means we allow closer together values
+                # dist[0] is guranteed < dist[1]. lets say 2x as big, then dist[1] / dist[2] = 2.
+                # 
+                if self.threshold is None or self.threshold > dists[1][1] / dists[0][1]:
+                    closest.append(dists[0][0])
+
+                # can get the number of expected classes later from list
+
+                
 
             matches[dev_state] = Counter(closest)
 
@@ -452,8 +459,8 @@ class Experiment:
         [[0.76666667 0. 0.23333333]
          [0.   1.   0.  ]
          [0.   0.   1.  ]]
-        >>> exp.classes
-        {(Apple TV, idle): Counter({(Apple TV, idle): 46, (Cosori Air Fryer, idle): 14}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, idle): 60}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 60})}
+        >>> exp.classes # doctest: +NORMALIZE_WHITESPACE
+        {Apple TV, idle: Counter({Apple TV, idle: 46, Cosori Air Fryer, idle: 14}), Samsung 32" TV, idle:Counter({Samsung 32" TV, idle: 60}), Cosori Air Fryer, idle: Counter({Cosori Air Fryer, idle: 60})}
 
         >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv'])
         >>> exp.classes = {(exp.devices[0], State.IDLE): Counter([(exp.devices[0],  State.IDLE), (exp.devices[1], State.IDLE)]), (exp.devices[1], State.IDLE): Counter([(exp.devices[0], State.IDLE)] * 14 + [(exp.devices[1], State.IDLE)] * 42)}

@@ -108,4 +108,6 @@
       //  content((rel: (0, -.4), to: "window.south"), [Window])
     })
 
-#let model
+#for diagram in (side-channels, measurement, process) {
+  diagram
+}
