@@ -1,5 +1,6 @@
 #import "@preview/cetz:0.5.2"
 #import "@preview/numty:0.1.0" as nt
+#import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
 
 #let side-channels = cetz.canvas({
   import cetz.draw: *
@@ -108,6 +109,22 @@
       //  content((rel: (0, -.4), to: "window.south"), [Window])
     })
 
-#for diagram in (side-channels, measurement, process) {
+#let flow = figure(diagram(
+  $P(t)_I edge(->) & M^1_I edge(->) & C_x$
+), caption: [Every Idle power trace is passed to the model, which outputs a predicted class])
+
+#let model = cetz.canvas({
+  import cetz.draw: *
+
+  let class(center, width) = {
+    let height = 1
+    move-to((rel: (-width / 2, height / 2), to: center))
+    line((), (rel: (0, height)))
+  }
+
+  class((0, 0), 2)
+})
+
+#for diagram in (side-channels, measurement, process, flow, model) {
   diagram
 }
