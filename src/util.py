@@ -650,11 +650,11 @@ def graph_confusion_matrix(exp: Experiment):
     ax.tick_params(axis="both", labelsize=7 if n > 30 else 11)
     # fig.set_dpi(400)
     # fig.
-    filename = f"assets/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
+    filename = f"../assets/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
     # print(f"Wrote graph to {filename}")
     fig.savefig(filename
         , bbox_inches="tight"
-    )
+    ) 
 
 
 # """

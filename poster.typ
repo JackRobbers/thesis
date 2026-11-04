@@ -1,10 +1,13 @@
+#import "assets/diagrams.typ": *
+#import "assets/common.typ": *
+
 #set text(font: "Arial GEO")
 #set par(leading: 30pt)
 
 #let container(content) = {
-  show heading.where(level: 1): set text(weight: "bold", size: 36pt)
+  show heading.where(level: 1): set text(weight: "bold", size: 36pt, font: "Arial GEO")
 
-  set text(weight: "regular", size: 24pt)
+  set text(weight: "regular", size: 24pt, font: "Arial")
 
   box(content, width: 100%, inset: 1em, stroke: 0.5em + rgb("#b9cde5"), radius: 20pt)
 }
@@ -42,7 +45,11 @@
 
       Created a dataset to complement and verify existing data.
 
+      #figure(align(center, scale-to-container(measurement, width: 95%)), caption: [Process of collecting data])
 
+      #table_image("table_mydata.pdf", width: 100%, caption: "Ass")
+
+      Collected
     ])),
     grid.cell(colspan: 2, container([
       = Introduction
