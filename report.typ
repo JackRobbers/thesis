@@ -10,8 +10,8 @@
 #import "assets/diagrams.typ": *
 #import "assets/eestyle2.typ": *
 #show: eestyle2
-
 #import "assets/common.typ": *
+
 
 #let config = yaml("common.yaml")
 
@@ -334,7 +334,6 @@ From the confusion matrix two overall measures are calculated, the Macro Average
 #figure(
   image("assets/confusion-matrix-active-150-100-mean-Median.pdf", width: 120%),
   caption: [Confusion Matrix for Active data. Metric: mean and classification by median],
-  kind: table,
 ) <active180_10>
 
 #figure(

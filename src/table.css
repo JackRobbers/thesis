@@ -25,7 +25,7 @@ tr, th, td {
     font-weight: normal;
 }
 tr:nth-last-child(1) th {
-    font-weight: bold;
+    /* font-weight: bold; */
 }
 tbody tr:nth-child(odd) {
     background: #f5f5f5;
