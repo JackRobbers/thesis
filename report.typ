@@ -172,7 +172,7 @@ The data from Zhou et al @zhouCatchingHackersWatching2026a, is publicly availabl
 
 They measured the power at 1 Hz of 33 different IoT devices using a Tapo P110 Smart Plug. They group the devices into general categories based on the type and functionality. I've only examined the benign idle and active scenarios as these represent typical operation of the devices.
 
-#figure(output("safenetiot"), caption: "Devices in SafeNetIoT dataset by category")
+#table_image("categories", caption: "Devices in SafeNetIoT dataset by category")
 
 The amount of available data is small with each trace lasting around 40 minutes and there is only 1 trace per situation. After splitting the data into training and setting a baseline of the device this leaves very little unknown data for verification.
 
@@ -305,13 +305,13 @@ The data windowing is controlled by two parameters, $w$ and $s$. These effect th
 #todo("Combine plots into 1?, memoise ")
 
 #figure(
-  image("assets/w_s_idle_1.pdf"),
+  image("generated/w_s_idle_1.pdf"),
   caption: [Macro Average F1 score for all devices whilst varying $w$ and $s$ window parameters on IDLE data classified by $mu$],
 ) <w_s_idle>
 
 
 #figure(
-  image("assets/w_s_active_1.pdf"),
+  image("generated/w_s_active_1.pdf"),
   caption: [F1 score performance whilst varying $w$ and $s$ window parameters on ACTIVE data classified by $mu$],
 ) <w_s_active>
 
@@ -327,12 +327,12 @@ Using the fixed values of w and s above, we compute the confusion matrices. A co
 
 From the confusion matrix two overall measures are calculated, the Macro Average F1 score and the number of devices with high precision. The first is the equally weighted mean (as opposed to a weighted mean which could be used if information about the prevalence of the means was know) of the F1 scores. The F1 score is the .
 #figure(
-  image("assets/confusion-matrix-idle-150-100-mean-Median.pdf", width: 120%),
+  image("generated/confusion-matrix-idle-150-100-mean-Median.pdf", width: 120%),
   caption: [Confusion Matrix for Idle data. Metric: mean and classification by median],
 ) <idle180_10>
 
 #figure(
-  image("assets/confusion-matrix-active-150-100-mean-Median.pdf", width: 120%),
+  image("generated/confusion-matrix-active-150-100-mean-Median.pdf", width: 120%),
   caption: [Confusion Matrix for Active data. Metric: mean and classification by median],
 ) <active180_10>
 
@@ -374,12 +374,12 @@ Building on the same problematic Sonos device in the previous section, it's $sig
 
 
 #figure(
-  image("assets/confusion-matrix-idle-150-100-mean-std-Median.pdf"),
+  image("generated/confusion-matrix-idle-150-100-mean-std-Median.pdf"),
   caption: [Confusion Matrix for Idle  data windowed with w=#config.w, s=#config.s. Metric: $mu$ and $sigma$ and classification by median],
 ) <mu_sigma_idle>
 
 #figure(
-  image("assets/confusion-matrix-active-150-100-mean-std-Median.pdf"),
+  image("generated/confusion-matrix-active-150-100-mean-std-Median.pdf"),
   caption: [Confusion Matrix for Idle  data windowed with w=#config.w, s=#config.s. Metric: $mu$ and $sigma$ and classification by median],
 ) <mu_sigma_active>
 
@@ -387,10 +387,9 @@ In @mu_sigma_idle we observe that the performance of the Sonos speaker is greatl
 
 == Summary of Results
 
-#figure(
-  image("assets/table_summary.pdf"),
+#table_image(
+  "summary",
   caption: [Comparison of F1 scores between idle and active datasets and either $mu$ only or $mu$ and $sigma$ together. All classifications are by median and w = #config.w, s = #config.s.],
-  kind: table,
 )
 <comparison>
 
@@ -412,7 +411,7 @@ So far we've known that the state of data going in, a harder problem that is clo
 
 By classifying the testing data using both the active and idle models. The state is determined by first classifying as a certain device in a certain state and then discarding the state.
 
-#figure(caption: [Success at classifying to correct state], image("assets/table_both.pdf"), kind: table)
+#table_image("both", caption: [Success at classifying to correct state])
 
 == Applying to My Dataset
 

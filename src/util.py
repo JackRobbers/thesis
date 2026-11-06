@@ -9,6 +9,7 @@ from collections import Counter
 from itertools import islice
 from weasyprint import HTML, CSS
 
+
 class State(StrEnum):
     ACTIVE = "active"
     IDLE = "idle"
@@ -91,7 +92,7 @@ class Trace:
     32
     >>> len(exp.data)
     32
-    
+
     >>> [len(data.training.profile) for data in exp.data]
     [111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111]
     >>> [len(data.testing.profile) for data in exp.data]
@@ -127,7 +128,11 @@ class Trace:
                 / 1000
             )
             self.profile.append(
-                {Metric.MEAN: window_power.mean(), Metric.STD: window_power.std(), Metric.FFT: np.abs(np.fft.fft(window_power)[0])}
+                {
+                    Metric.MEAN: window_power.mean(),
+                    Metric.STD: window_power.std(),
+                    Metric.FFT: np.abs(np.fft.fft(window_power)[0]),
+                }
             )
 
 
@@ -157,7 +162,7 @@ class Data:
         self.testing = Trace(self, df.iloc[split:, :], TraceType.TESTING)
 
     def __repr__(self):
-        return f'<{self.device}, {self.state}>'
+        return f"<{self.device}, {self.state}>"
 
 
 def category_sort_order(cat):
@@ -205,11 +210,17 @@ class Context:
                     if device != "echodot3"
                     if path.isdir(f"{self.path}/{category}/{device}")
                 ],
-                key=lambda device: (category_sort_order(device.category), device.name()),
+                key=lambda device: (
+                    category_sort_order(device.category),
+                    device.name(),
+                ),
             )
-        else: 
-            self.devices = [Device(device, None) for device in listdir(self.path) if path.isdir(f"{self.path}/{device}")]
-
+        else:
+            self.devices = [
+                Device(device, None)
+                for device in listdir(self.path)
+                if path.isdir(f"{self.path}/{device}")
+            ]
 
     def device_from_name(self, device_name):
         return [device for device in self.devices if device.dir_name == device_name][0]
@@ -345,7 +356,7 @@ class Experiment:
         classify_by: Classifier,
         w,
         s,
-        threshold = None,
+        threshold=None,
         include=[],
     ):
         if w > 600:
@@ -366,7 +377,7 @@ class Experiment:
         ]
 
         dfs = {
-            (device, state) : pd.read_csv(
+            (device, state): pd.read_csv(
                 f"{self.context.path}/{device.category}/{device.dir_name}/{state}.csv",
                 parse_dates=["timestamp"],
             )
@@ -378,7 +389,8 @@ class Experiment:
         # truncate the data to the shortest one
         least = min([len(df) for df in dfs.values()])
         self.data: list[Data] = [
-            Data(self, device, state, df.iloc[:least, :]) for (device, state), df in dfs.items()
+            Data(self, device, state, df.iloc[:least, :])
+            for (device, state), df in dfs.items()
         ]
 
         self.classes = self.classify_data()
@@ -440,7 +452,9 @@ class Experiment:
         else:
             raise ValueError(self.classify_by)
 
-        testing_profiles = {(data.device, data.state): data.testing.profile for data in self.data}
+        testing_profiles = {
+            (data.device, data.state): data.testing.profile for data in self.data
+        }
         matches: dict[tuple[Device, State], Counter[tuple[Device, State]]] = {}
         for dev_state, testing_profile in testing_profiles.items():
             closest: list[tuple[Device, State]] = []
@@ -450,24 +464,42 @@ class Experiment:
             for window_to_classify in testing_profile:
                 # closest_prediction = None
                 # dist = np.inf
-                dists = list(islice(sort_dict_by_value({predicted : np.sqrt(np.sum(
-                        [
-                            (window_to_classify[metric] - training[metric]) ** 2
-                            for metric in self.metrics
-                        ]
-                    )) for predicted, training in training_profiles.items()}).items(), 2))
+                dists = list(
+                    islice(
+                        sort_dict_by_value(
+                            {
+                                predicted: np.sqrt(
+                                    np.sum(
+                                        [
+                                            (
+                                                window_to_classify[metric]
+                                                - training[metric]
+                                            )
+                                            ** 2
+                                            for metric in self.metrics
+                                        ]
+                                    )
+                                )
+                                for predicted, training in training_profiles.items()
+                            }
+                        ).items(),
+                        2,
+                    )
+                )
 
                 # TODO way to report dists / ratios?
                 # ratio should judge the relative size. a smaller threshold means we allow closer together values
                 # guranteed dist[0] < dist[1]. lets say 2x as big, then dist[1] / dist[0] = 2.
-                # 
-    
-                if self.threshold is None or (dists[1][1] / dists[0][1] if dists[0][1] != 0 else 0) >= self.threshold:
+                #
+
+                if (
+                    self.threshold is None
+                    or (dists[1][1] / dists[0][1] if dists[0][1] != 0 else 0)
+                    >= self.threshold
+                ):
                     closest.append(dists[0][0])
 
                 # can get the number of expected classes later from list
-
-                
 
             matches[dev_state] = Counter(closest)
 
@@ -509,22 +541,21 @@ class Experiment:
         """
         n = len(self.data)
 
-        # add another 
+        # add another
         if self.threshold:
             n = n + 1
 
         matrix = np.zeros((n, n))
         for i, class_ in enumerate(self.classes.values()):
             for (device, state), count in class_.items():
-                data, j = self.get_data(device, state) 
+                data, j = self.get_data(device, state)
                 classes = len(data.testing.profile)
-                
+
                 share = count / classes
                 matrix[i][j] = share
 
                 if self.threshold:
                     matrix[i][-1] = (classes - class_.total()) / classes
-
 
         return matrix
 
@@ -559,11 +590,10 @@ class Experiment:
             for j in range(n):
                 if j != i:
                     fn += self.confusion_matrix[j, i]
-                    fp += self.confusion_matrix[i, j] 
+                    fp += self.confusion_matrix[i, j]
             f1_scores[self.data[i]] = 0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
             precision_scores[self.data[i]] = 0 if tp == 0 else tp / (tp + fp)
 
-        
         return f1_scores, precision_scores, unknown_rate
 
     def get_device(self, name: str) -> Device:
@@ -607,7 +637,10 @@ def my_colormesh(fig, ax, x, y, z):
 def graph_confusion_matrix(exp: Experiment):
     # TODO better font scaling
     fig, ax = plt.subplots()
-    names = exp.data
+    names = [
+        repr(exp.data) if len(exp.states) > 1 else data.device.name()
+        for data in exp.data
+    ]
     matrix = np.fliplr(exp.confusion_matrix)
     my_colormesh(
         fig,
@@ -645,11 +678,9 @@ def graph_confusion_matrix(exp: Experiment):
     ax.tick_params(axis="both", labelsize=7 if n > 30 else 11)
     # fig.set_dpi(400)
     # fig.
-    filename = f"../assets/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
+    filename = f"../generated/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
     # print(f"Wrote graph to {filename}")
-    fig.savefig(filename
-        , bbox_inches="tight"
-    ) 
+    fig.savefig(filename, bbox_inches="tight")
 
 
 # """
@@ -721,8 +752,6 @@ if __name__ == "__main__":
     c = Context("../PowerIDS/classifier/power_csv")
     exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10)
 
-    
-    
     print("Running tests")
 
     # doctest.run_docstring_examples(Experiment.compute_confusion_matrix, globs=globals())

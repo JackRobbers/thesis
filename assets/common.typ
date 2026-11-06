@@ -8,5 +8,5 @@
 }
 
 #let table_image(path, width: auto, caption: "") = {
-  figure(image(path, width: width), caption: caption, kind: table)
+  figure(image("../generated/table_" + path + ".pdf", width: width), caption: caption, kind: table)
 }

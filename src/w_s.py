@@ -1,6 +1,11 @@
 # moved to its own script because it takes ages to run.
 # this should memoise
 
+from functools import partial
+from matplotlib import ticker
+from util import *
+
+c = Context("../PowerIDS/classifier/power_csv")
 common = partial(
     Experiment,
     c,
@@ -34,4 +39,4 @@ for resolution in [500, 100, 10, 1]:
         ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(6))
         ax.yaxis.set_minor_locator(ticker.AutoMinorLocator(5))
         plt.show()
-        fig.savefig(f"assets/w_s_{state}_f{resolution}.pdf")
+        fig.savefig(f"generated/w_s_{state}_f{resolution}.pdf")

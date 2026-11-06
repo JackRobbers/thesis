@@ -1,8 +1,8 @@
 
 table {
     font-family: "Arial", "Arial GEO";
-    color: black;
     font-size: 24pt; /* for poster change for report*/
+    color: black;
     table-layout: auto;
     /* width: 100%; */
     border-collapse: collapse;

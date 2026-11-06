@@ -153,7 +153,7 @@
         columns: (2fr, 1fr),
         [
           #table_image(
-            "table_mini.pdf",
+            "mini",
             // width: 90%,
             caption: [) Performance across all classes #contribution[= 1.1], #contribution[= 1.2]],
           )
@@ -161,7 +161,7 @@
         ],
         [
           #table_image(
-            "table_both.pdf",
+            "both",
             width: 90%,
             caption: [) Macro average F1 classifying by state. #contribution[= 1.3]],
           )

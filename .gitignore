@@ -4,5 +4,5 @@ __pycache__
 src/experiment_config.yaml
 
 # Regeneratable assets
-assets/*.pdf
-assets/*.html
+generated/*.pdf
+generated/*.html
