@@ -7,6 +7,6 @@
   [TODO: *#content*]
 }
 
-#let table_image(path, width: 100%, caption: "") = {
+#let table_image(path, width: auto, caption: "") = {
   figure(image(path, width: width), caption: caption, kind: table)
 }

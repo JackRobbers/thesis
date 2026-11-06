@@ -128,13 +128,13 @@
       #figure(
         caption: [Comparison between the existing SafeNetIoT dataset and my dataset. My dataset covers a lot less devices but has more data to make more confident conclusion from.],
         [
-          #scale-to-container(width: 95%, table(
+          #table(
             columns: 3,
             bold[Property], bold[SafeNetIoT], bold[My Dataset],
             [Devices], [32], [6],
             [Trace length], [\~40 minutes], [78 hours],
             [Scenarios], [10], [1],
-          ))
+          )1
         ],
       )
 
@@ -154,7 +154,7 @@
         [
           #table_image(
             "table_mini.pdf",
-            width: 90%,
+            // width: 90%,
             caption: [) Performance across all classes #contribution[= 1.1], #contribution[= 1.2]],
           )
 

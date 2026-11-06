@@ -2,7 +2,7 @@
 table {
     font-family: "Arial", "Arial GEO";
     color: black;
-    font-size: 15px;
+    font-size: 24pt; /* for poster change for report*/
     table-layout: auto;
     /* width: 100%; */
     border-collapse: collapse;
