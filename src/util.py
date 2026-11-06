@@ -6,13 +6,8 @@ from os import listdir, path
 from pathlib import Path
 from colorhash import ColorHash
 from collections import Counter
-import pprint
 from itertools import islice
-from collections.abc import Sequence
-
-
-pp = pprint.PrettyPrinter(indent=4, width=100)
-
+from weasyprint import HTML, CSS
 
 class State(StrEnum):
     ACTIVE = "active"

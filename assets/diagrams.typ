@@ -1,7 +1,7 @@
 #import "@preview/cetz:0.5.2"
 #import "@preview/numty:0.1.0" as nt
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
-
+#set text(font: "Arial")
 #let side-channels = {
   set text(size: 18pt)
   cetz.canvas({

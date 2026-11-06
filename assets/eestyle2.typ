@@ -40,7 +40,7 @@
   // \pdfpageheight=297 true mm%fix for pslatex
   // \usepackage[margin=2.54cm]{geometry}%for setting margins correctly
   #set page(width: 210mm, height: 297mm, margin: 2.54cm)
-  #set text(size: 12pt, font: "Nimbus Roman")
+  #set text(size: 12pt, font: "Nimbus Roman"1)
   #set par(leading: 1em, first-line-indent: 0em, spacing: 1.5em)
   #show heading.where(depth: 1): set text(size: 24pt)
   #show heading.where(depth: 2): set text(size: 20pt)

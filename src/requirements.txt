@@ -9,4 +9,4 @@ nbdime
 asyncio
 pyyaml
 weasyprint
-pandera[pandas]
+jupyter

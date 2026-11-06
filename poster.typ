@@ -9,7 +9,7 @@
 #set text(font: "Arial GEO")
 #set par(leading: 16pt)
 
-#show math.equation: set text(font: "Latin Modern Math", size: 35pt)
+#show math.equation: set text(font: "Arial", size: 35pt)
 
 #let bold(content) = {
   set text(weight: "bold", font: "Arial GEO")
@@ -33,7 +33,7 @@
   #place(center, dx: 0cm, dy: 17cm, box[
     #set par(leading: 30pt)
     #align(center)[
-      #text(weight: "bold", size: 82pt)[Profiling Internet of Things with the Power Side Channel] \
+      #text(weight: "bold", size: 82pt)[Profiling IoT Devices using Power Consumption] \
       #text(size: 72pt, emph[Author: Jack Robbers]) \
       #text(size: 48pt, emph[Supervisor: Hassan Habibi Gharakheili])
     ]
@@ -97,21 +97,8 @@
         ],
       )])),
 
-    grid.cell(colspan: 2, rowspan: 1, container([
-      = Thesis Aims and Contributions
-      #set enum(numbering: "1.1)", full: true)
-      1. Investigate and evaluate methods for profiling IoT devices using power data.\
-        1. A responsive method to classify unseen data into \
-        2. Adding additional metrics\
-        3. Ability to classify unknown power traces as either idle or active
-      2. Produce a dataset of the power usage and network traffic of a range of IoT devices. \
-        1. A dataset to allow the replication and verification of results on \
-        2. A configurable
-
-      Contributions are numbered throughout the rest of the report.
-    ])),
-    grid.cell(colspan: 2, rowspan: 2, container([
-      = Method #contribution([1])
+    grid.cell(colspan: 3, rowspan: 2, container([
+      = Method to Classify Power Data by Device #contribution([1])
 
       #figure(
         [#scale-to-container(process) #v(25pt)],
@@ -127,13 +114,8 @@
         caption: [Unseen training data is classified by minimising the distance to. The pictured data falls within the green class],
       )
 
-
-
-
-
-
     ])),
-    grid.cell(colspan: 2, container([
+    grid.cell(colspan: 3, container([
       = Dataset #contribution([2.1])
 
       Created an extensible dataset.
@@ -158,15 +140,15 @@
 
 
     ])),
-    2grid.cell(colspan: 2, rowspan: 1, container([
+    grid.cell(colspan: 2, rowspan: 1, container([
       = SafeNetIoT Dataset
     ])),
-    grid.cell(colspan: 2, container([
+    grid.cell(colspan: 1, container([
       = Repo
       Set of scripts to
     ])),
     grid.cell(colspan: 6, rowspan: 1, container([
-      = Results
+      = Evaluation
       #grid(
         columns: (2fr, 1fr),
         [
