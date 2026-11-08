@@ -7,6 +7,6 @@
   [TODO: *#content*]
 }
 
-#let table_image(path, width: auto, caption: "") = {
+#let table_image(path, width: auto, caption: none) = {
   figure(image("../generated/table_" + path + ".pdf", width: width), caption: caption, kind: table)
 }

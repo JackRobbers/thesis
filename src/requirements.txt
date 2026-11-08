@@ -10,3 +10,4 @@ asyncio
 pyyaml
 weasyprint
 jupyter
+beautifulsoup4

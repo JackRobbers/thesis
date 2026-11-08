@@ -19,10 +19,16 @@ import asyncio
 import os
 import yaml
 import logging
+
 logger = logging.getLogger()
 logfile = f"../data/{datetime.now().isoformat(timespec='seconds')}.log"
-    
-logging.basicConfig(filename=logfile, level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S',    format='%(asctime)s %(levelname)-8s %(message)s',)
+
+logging.basicConfig(
+    filename=logfile,
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(asctime)s %(levelname)-8s %(message)s",
+)
 # Could do some kind of autodiscovery, but pretty slow.
 # Run nmap externally?
 
@@ -43,11 +49,11 @@ async def write_power(client, device_name, nickname, ip):
             if nickname != info.nickname:
                 raise ValueError("IP address wrong?")
 
-            filename= f"{directory}/{start.isoformat()}.csv"
+            filename = f"{directory}/{start.isoformat()}.csv"
 
             with open(filename, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
-                writer.writerow(("Time","Power_mW"))
+                writer.writerow(("Time", "Power_mW"))
 
                 if not log_error:
                     log_error = True
@@ -64,37 +70,44 @@ async def write_power(client, device_name, nickname, ip):
                 with open(filename, "a", newline="") as csvfile:
                     response = await device.get_energy_usage()
                     writer = csv.writer(csvfile)
-                    writer.writerow((response.local_time.isoformat(timespec="milliseconds"), response.current_power))
+                    writer.writerow(
+                        (
+                            response.local_time.isoformat(timespec="milliseconds"),
+                            response.current_power,
+                        )
+                    )
 
                 await asyncio.sleep(1)
 
             except Exception as e:
                 if log_error:
-                    logger.info(f'Failed to read from {device_name}, restarting connection {e}')
+                    logger.info(
+                        f"Failed to read from {device_name}, restarting connection {e}"
+                    )
                     log_error = False
                 # break, and go back to outer loop
                 break
-        
 
 
 async def run():
 
     with open("experiment_config.yaml") as y:
         config = yaml.safe_load(y)
-    client = ApiClient(config['tapo']['username'], config['tapo']['password'])
+    client = ApiClient(config["tapo"]["username"], config["tapo"]["password"])
 
-    
     print(f"Running, check {logfile} for errors")
     logger.info(f"Starting with config: {config['hosts']}")
     async with asyncio.TaskGroup() as tg:
-        for device_name, nickname, host in config['hosts']:
-            tg.create_task(write_power(client, device_name, nickname, f"{config['network_prefix']}{host}"))
-
-           
-        
+        for device_name, nickname, host in config["hosts"]:
+            tg.create_task(
+                write_power(
+                    client, device_name, nickname, f"{config['network_prefix']}{host}"
+                )
+            )
 
 
 import atexit
+
 atexit.register(lambda: logger.info("Program Killed"))
 
 if __name__ == "__main__":

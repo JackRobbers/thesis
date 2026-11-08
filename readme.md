@@ -47,3 +47,9 @@ hosts:
 `python3 get_power_data.py`
 
 This program doesn't output anything to stdout. Information is logged to a file identified by date in to top level of data/
+
+# Running analysis
+
+## adding a dataset
+
+add a new key in the common.yaml

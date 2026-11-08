@@ -10,9 +10,8 @@ table {
     margin-left: auto;
     margin-right: auto;
 }
-thead {
-    vertical-align: bottom;
-    font-weight: bold;
+th {
+    background-color: #b9a6a631;
 }
 tr, th, td {
     border: 1px solid black;
@@ -25,10 +24,7 @@ tr, th, td {
     /* font-weight: normal; */
 }
 tr:nth-last-child(1) th {
-    /* font-weight: bold; */
-}
-tbody tr:nth-child(odd) {
-    background: #f5f5f5;
+    font-weight: bold;
 }
 
 .row_heading, .index_name {  
@@ -43,4 +39,8 @@ body {
 @page {
     size: auto;
     margin: 0
+}
+
+* {
+    print-color-adjust: exact;
 }

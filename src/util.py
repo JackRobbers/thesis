@@ -8,6 +8,7 @@ from colorhash import ColorHash
 from collections import Counter
 from itertools import islice
 from weasyprint import HTML, CSS
+import yaml
 
 
 class State(StrEnum):
@@ -165,22 +166,6 @@ class Data:
         return f"<{self.device}, {self.state}>"
 
 
-def category_sort_order(cat):
-    match cat:
-        case "appliance":
-            return 5
-        case "tv":
-            return 4
-        case "lights":
-            return 1
-        case "audio":
-            return 2
-        case "camera":
-            return 3
-        case _:
-            raise ValueError(cat)
-
-
 class Context:
     """
     Get all the devices and categories.
@@ -195,32 +180,50 @@ class Context:
 
     >>> c.devices[:5]
     [Antela Light, Fitop Light, LIFX Light, Lepro Light, Tapo Light]
+
+    My data
+    >>> my = Context("My Data")
+    >>> len(my.devices)
+    6
+
     """
 
-    def __init__(self, base_path: str, categories=True):
-        # TODO remove hardcoding from powerids
-        self.path = Path(base_path)
-        if categories:
-            self.categories = sorted(listdir(self.path), key=category_sort_order)
+    def __init__(
+        self,
+        dataset_name: str,
+    ):
+        file_path = Path(__file__).parent
+        with open(file_path / "../common.yaml") as f:
+            self.config = yaml.safe_load(f)
+        dataset = self.config["datasets"][dataset_name]
+        self.path = file_path / ".." / dataset["path"]
+        if "categories" in dataset:
+            cat_key = lambda cat: dataset["categories"].index(cat)
+
+            self.categories = sorted(listdir(self.path), key=cat_key)
             self.devices = sorted(
                 [
                     Device(device, category)
                     for category in self.categories
                     for device in listdir(f"{self.path}/{category}")
-                    if device != "echodot3"
+                    if "exclude" not in dataset or device not in dataset["exclude"]
                     if path.isdir(f"{self.path}/{category}/{device}")
                 ],
                 key=lambda device: (
-                    category_sort_order(device.category),
+                    cat_key(device.category),
                     device.name(),
                 ),
             )
         else:
-            self.devices = [
-                Device(device, None)
-                for device in listdir(self.path)
-                if path.isdir(f"{self.path}/{device}")
-            ]
+            self.devices = sorted(
+                [
+                    Device(device, None)
+                    for device in listdir(self.path)
+                    if "exclude" not in dataset or device not in dataset["exclude"]
+                    if path.isdir(f"{self.path}/{device}")
+                ],
+                key=lambda device: (device.name(),),
+            )
 
     def device_from_name(self, device_name):
         return [device for device in self.devices if device.dir_name == device_name][0]
@@ -326,7 +329,7 @@ class Experiment:
     """
     Verify the new devices are seperate
 
-    >>> context = Context("../PowerIDS/classifier/power_csv")
+    >>> context = Context("SafeNetIoT")
     >>> exp = Experiment(context, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10)
 
     >>> context.devices.pop()
@@ -346,6 +349,7 @@ class Experiment:
     Filtering
     >>> len(Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
     3
+
     """
 
     def __init__(
@@ -354,19 +358,19 @@ class Experiment:
         states: list[State],
         metrics: list[Metric],
         classify_by: Classifier,
-        w,
-        s,
+        w=None,
+        s=None,
         threshold=None,
         include=[],
     ):
-        if w > 600:
-            raise ValueError(w)
         self.context = context
         self.states: list[State] = states
         self.metrics = metrics
         self.classify_by = classify_by
-        self.w: int = w
-        self.s: int = s
+        self.w: int = context.config["w"] if w is None else w
+        if self.w > 600:
+            raise ValueError(self.w)
+        self.s: int = context.config["s"] if s is None else s
 
         self.threshold = threshold
 
@@ -749,7 +753,7 @@ if __name__ == "__main__":
 
     # doctest.FAIL_FAST = True
     # doctest.NORMALIZE_WHITESPACE = True
-    c = Context("../PowerIDS/classifier/power_csv")
+    c = Context("SafeNetIoT")
     exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10)
 
     print("Running tests")
