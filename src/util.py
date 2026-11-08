@@ -400,7 +400,7 @@ class Experiment:
         self.classes = self.classify_data()
         self.confusion_matrix = self.compute_confusion_matrix()
         self.f1_scores, self.precision, unknown = self.compute_scores()
-        if self.threshold == None:
+        if self.threshold is None:
             assert all([x == 0 for x in unknown.values()])
         self.unknown = unknown
         self.f1_macro_average = sum(self.f1_scores.values()) / len(self.f1_scores)
@@ -514,7 +514,7 @@ class Experiment:
         compute the confusion matrix using the given classes
 
         >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
-        >>> print(exp.confusion_matrix) # doctest: +NORMALIZE_WHITESPACE
+        >>> exp.confusion_matrix # doctest: +NORMALIZE_WHITESPACE
         [[0.76666667 0. 0.23333333]
          [0.   1.   0.  ]
          [0.   0.   1.  ]]
@@ -525,6 +525,9 @@ class Experiment:
         >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 150, 100, threshold = 2, include=['appletv', 'samsungtv', 'cosori'])
         >>> len(exp.devices)
         3
+        >>> len(exp.f1_scores)
+        3
+
 
         make sure we don't add None to the data
         >>> len(exp.data)
@@ -546,7 +549,7 @@ class Experiment:
         n = len(self.data)
 
         # add another
-        if self.threshold:
+        if self.threshold is not None:
             n = n + 1
 
         matrix = np.zeros((n, n))
@@ -558,7 +561,7 @@ class Experiment:
                 share = count / classes
                 matrix[i][j] = share
 
-                if self.threshold:
+                if self.threshold is not None:
                     matrix[i][-1] = (classes - class_.total()) / classes
 
         return matrix
@@ -578,11 +581,12 @@ class Experiment:
         precision_scores: dict[Data, float] = {}
         unknown_rate: dict[Data, float] = {}
         n = len(self.confusion_matrix)
-        # don't count the unknown row
-        if self.threshold:
+        if self.threshold is not None:
+            # don't count the unknown row
             n -= 1
             for i in range(n):
-                unknown_rate[self.data[i]] = self.confusion_matrix[i, -1]
+                val = self.confusion_matrix[i, -1]
+                unknown_rate[self.data[i]] = val
         else:
             for i in range(n):
                 unknown_rate[self.data[i]] = 0
@@ -626,10 +630,16 @@ def sort_dict_by_value(dict, key=lambda x: x[1], reverse=False):
 #     return pd.Interval(min(metric), max(metric))
 
 
-def my_colormesh(fig, ax, x, y, z):
+def my_colormesh(fig, ax, x, y, c):
     cmap = "BuPu"
     im = ax.pcolormesh(
-        x, y, z, cmap=cmap, shading="nearest", edgecolors="grey", linewidths=0.1
+        x,
+        y,
+        np.flipud(c),
+        cmap=cmap,
+        shading="nearest",
+        edgecolors="grey",
+        linewidths=0.1,
     )
     ax.tick_params("x", rotation=90)
 
@@ -641,22 +651,27 @@ def my_colormesh(fig, ax, x, y, z):
 def graph_confusion_matrix(exp: Experiment):
     # TODO better font scaling
     fig, ax = plt.subplots()
+    rows, cols = np.shape(exp.confusion_matrix)
     names = [
         repr(exp.data) if len(exp.states) > 1 else data.device.name()
         for data in exp.data
     ]
-    matrix = np.fliplr(exp.confusion_matrix)
+    matrix = exp.confusion_matrix
+    vert_names = names[::-1]
+    if exp.threshold is not None:
+        matrix = matrix[: rows - 1, :cols]
+        names = names + ["Unknown"]
+        rows -= 1
     my_colormesh(
         fig,
         ax,
-        names[::-1],
         names,
+        vert_names,
         matrix,
     )
 
-    n = len(exp.data)
-    for i in range(n):
-        for j in range(n):
+    for i in range(rows):
+        for j in range(cols):
             share = matrix[i][j]
             if share != 0:
                 colour = "black"
@@ -664,9 +679,9 @@ def graph_confusion_matrix(exp: Experiment):
                     colour = "white"
                 ax.text(
                     j,
-                    i,
+                    rows - i - 1,
                     f"{share*100:.0f}",
-                    fontsize=4 if n > 30 else 8,
+                    fontsize=4 if rows > 30 else 8,
                     # f"{share:.0%}",
                     # fontsize=n / 11,
                     ha="center",
@@ -679,11 +694,10 @@ def graph_confusion_matrix(exp: Experiment):
     # ax.set_title(
     # f"state={exp.state}, metric={exp.metric.fancy_name()}, w = {exp.w}, s = {exp.s}"
     # )
-    ax.tick_params(axis="both", labelsize=7 if n > 30 else 11)
+    ax.tick_params(axis="both", labelsize=7 if rows > 30 else 11)
     # fig.set_dpi(400)
     # fig.
     filename = f"../generated/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
-    # print(f"Wrote graph to {filename}")
     fig.savefig(filename, bbox_inches="tight")
 
 

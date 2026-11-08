@@ -93,7 +93,7 @@
       = Evaluation
 
       #align(center)[
-        #table_image("evaluation", width: 90%)
+        #table_image("evaluation", width: 100%)
         // #scale-to-container(image("generated/confusion-matrix-idle-150-100-mean-std-Median.pdf"), width: 100%)
       ]
     ])),
