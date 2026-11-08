@@ -192,13 +192,14 @@ class Context:
         self,
         dataset_name: str,
     ):
+        self.dataset_name = dataset_name
         file_path = Path(__file__).parent
         with open(file_path / "../common.yaml") as f:
             self.config = yaml.safe_load(f)
-        dataset = self.config["datasets"][dataset_name]
-        self.path = file_path / ".." / dataset["path"]
-        if "categories" in dataset:
-            cat_key = lambda cat: dataset["categories"].index(cat)
+        self.dataset = self.config["datasets"][dataset_name]
+        self.path = file_path / ".." / self.dataset["path"]
+        if "categories" in self.dataset:
+            cat_key = lambda cat: self.dataset["categories"].index(cat)
 
             self.categories = sorted(listdir(self.path), key=cat_key)
             self.devices = sorted(
@@ -206,7 +207,8 @@ class Context:
                     Device(device, category)
                     for category in self.categories
                     for device in listdir(f"{self.path}/{category}")
-                    if "exclude" not in dataset or device not in dataset["exclude"]
+                    if "exclude" not in self.dataset
+                    or device not in self.dataset["exclude"]
                     if path.isdir(f"{self.path}/{category}/{device}")
                 ],
                 key=lambda device: (
@@ -219,10 +221,11 @@ class Context:
                 [
                     Device(device, None)
                     for device in listdir(self.path)
-                    if "exclude" not in dataset or device not in dataset["exclude"]
+                    if "exclude" not in self.dataset
+                    or device not in self.dataset["exclude"]
                     if path.isdir(f"{self.path}/{device}")
                 ],
-                key=lambda device: (device.name(),),
+                key=lambda device: device.name(),
             )
 
     def device_from_name(self, device_name):
@@ -297,6 +300,8 @@ def map_device_names(name):
             return "Xiaomi Blender"
         case "weekett":
             return "Weekett Kettle"
+        case dev:
+            ValueError("Unknown device ", dev)
 
 
 class Device:
@@ -305,6 +310,7 @@ class Device:
         self.category = category
         self.nice_name = map_device_names(dir_name)
         self.colour = ColorHash(dir_name).hex
+        self.path = Path(category) if category is not None else Path("")
 
     def __str__(self):
         return self.name()
@@ -379,12 +385,15 @@ class Experiment:
         self.devices = [
             device for device in context.devices if device.dir_name in include
         ]
-
+        official_cols = ["timestamp", "power_mW"]
+        mapper = {
+            col: official_cols[i] for i, col in enumerate(self.context.dataset["cols"])
+        }
         dfs = {
             (device, state): pd.read_csv(
-                f"{self.context.path}/{device.category}/{device.dir_name}/{state}.csv",
-                parse_dates=["timestamp"],
-            )
+                self.context.path / device.path / device.dir_name / f"{state}.csv",
+                parse_dates=True,
+            ).rename(columns=mapper)
             for state in self.states
             for device in self.devices
             if device.dir_name in include
@@ -406,7 +415,7 @@ class Experiment:
         self.f1_macro_average = sum(self.f1_scores.values()) / len(self.f1_scores)
 
     def __repr__(self):
-        return f"{"-".join(self.states)}_{"-".join(self.metrics)}_{self.classify_by}_{self.w}_{self.s}"
+        return f"{self.context.dataset_name}-{"-".join(self.states)}_{"-".join(self.metrics)}_{self.classify_by}_{self.w}_{self.s}"
 
     def classify_data(self: Experiment):
         """
@@ -515,9 +524,9 @@ class Experiment:
 
         >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
         >>> exp.confusion_matrix # doctest: +NORMALIZE_WHITESPACE
-        [[0.76666667 0. 0.23333333]
-         [0.   1.   0.  ]
-         [0.   0.   1.  ]]
+        array([[0.76666667, 0.        , 0.23333333],
+           [0.        , 1.        , 0.        ],
+           [0.        , 0.        , 1.        ]])
         >>> exp.classes # doctest: +NORMALIZE_WHITESPACE
         {(Apple TV, idle): Counter({(Apple TV, idle): 46, (Cosori Air Fryer, idle): 14}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, idle): 60}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 60})}
 
@@ -535,7 +544,7 @@ class Experiment:
         >>> exp.classes
         {(Apple TV, idle): Counter({(Apple TV, idle): 5, (Cosori Air Fryer, idle): 1}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, idle): 7}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 7})}
         >>> exp.confusion_matrix # doctest: +NORMALIZE_WHITESPACE
-        array([[0.71428571, 0.        , 0.14285714, 0.14285714],
+        array([[0.83333333, 0.        , 0.16666667, 0.14285714],
            [0.        , 1.        , 0.        , 0.        ],
            [0.        , 0.        , 1.        , 0.        ],
            [0.        , 0.        , 0.        , 0.        ]])
@@ -558,7 +567,8 @@ class Experiment:
                 data, j = self.get_data(device, state)
                 classes = len(data.testing.profile)
 
-                share = count / classes
+                share = count / class_.total()
+                # share = count / classes
                 matrix[i][j] = share
 
                 if self.threshold is not None:
@@ -599,6 +609,7 @@ class Experiment:
                 if j != i:
                     fn += self.confusion_matrix[j, i]
                     fp += self.confusion_matrix[i, j]
+            # print(n, tp, fp)
             f1_scores[self.data[i]] = 0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
             precision_scores[self.data[i]] = 0 if tp == 0 else tp / (tp + fp)
 

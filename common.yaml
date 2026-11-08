@@ -5,12 +5,17 @@ supervisor: "A/Prof Hassan Habibi Gharakheili"
 w: 150
 s: 100
 
-datasets: { "SafeNetIoT":
-      # structure is /category/device/state.csv
-      {
+datasets:
+  {
+    ? "SafeNetIoT" # structure is /category/device/state.csv
+    : {
         path: "../PowerIDS/classifier/power_csv",
         categories: ["lights", "audio", "camera", "tv", "appliance"],
         exclude: ["echodot3"], # doesn't have enough data
-      }, "My Data":
-      # structure is /device/state_time.csv
-      { path: "data" } }
+        cols: ["timestamp", power_mW],
+      },
+    ? "My Data" # structure is /device/state_time.csv
+    : { path: "data", cols: ["time", Power_mW] },
+    ? "Raw Data" # doesn't actually work, used by the filter script to make the /data folder
+    : { path: "raw_data" },
+  }
