@@ -1,13 +1,14 @@
+# Experiment and related classes
+
 from enum import StrEnum
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from os import listdir, path
 from pathlib import Path
+from os import path, listdir
 from colorhash import ColorHash
 from collections import Counter
 from itertools import islice
-from weasyprint import HTML, CSS
 import yaml
 
 
@@ -311,7 +312,7 @@ class Experiment:
         return [data for dataset in self.datasets for data in dataset.data]
 
     def devices(self):
-        # warning: assumes all devices exist in all states
+        # Warning: assumes all devices exist in all states
         return [data.device for data in self.data() if data.state == self.states[0]]
 
     def get_data(self, device: str, state: State):
@@ -322,6 +323,67 @@ class Experiment:
             for data in dataset.data
             if data.device.dir_name == device and data.state == state
         ][0]
+
+    def graph_confusion_matrix(self, stick_out_labels=True, multiline_labels=False):
+        # TODO better font scaling
+        fig, ax = plt.subplots()
+        rows, cols = np.shape(self.confusion_matrix)
+
+        spacer = "\n" if multiline_labels else ", "
+        conditional_label = lambda thing, cond: f"{spacer}{thing}" if cond else ""
+        names = [
+            f"{data.device.name()}{conditional_label(data.state.capitalize(), len(self.data())> 1)}{conditional_label(data.dataset, len(self.datasets)> 1)}"
+            for data in self.data()
+        ]
+        matrix = self.confusion_matrix
+        vert_names = names[::-1]
+        if self.threshold is not None:
+            matrix = matrix[: rows - 1, :cols]
+            names = names + ["Unknown"]
+            rows -= 1
+        my_colormesh(
+            fig,
+            ax,
+            names,
+            vert_names,
+            matrix,
+        )
+
+        for i in range(rows):
+            for j in range(cols):
+                share = matrix[i][j]
+                if share != 0:
+                    colour = "black"
+                    if share > 0.45:
+                        colour = "white"
+                    ax.text(
+                        j,
+                        rows - i - 1,
+                        f"{share*100:.0f}",
+                        fontsize=4 if rows > 30 else 8,
+                        # f"{share:.0%}",
+                        # fontsize=n / 11,
+                        ha="center",
+                        va="center",
+                        color=colour,
+                    )
+
+        ax.set_ylabel("True Class")
+        ax.set_xlabel("Predicted Class")
+        ax.xaxis.label.set_fontsize(16)
+        ax.yaxis.label.set_fontsize(16)
+        if stick_out_labels:
+            ax.tick_params("x", rotation=90)
+        else:
+            ax.tick_params(
+                "y",
+                rotation=90,
+                labelrotation_mode="ytick",
+            )
+
+        ax.tick_params(axis="both", labelsize=7 if rows > 30 else 11)
+        filename = f"../generated/confusion-matrix-{'-'.join(self.states)}-{self.w}-{self.s}-{"-".join(self.metrics)}-{self.classify_by}.pdf"
+        fig.savefig(filename, bbox_inches="tight")
 
 
 class TraceType(StrEnum):
@@ -382,16 +444,16 @@ class Trace:
 
     TODO do we want non rectangular windows? are edge effects important
 
-    # TODO fix outlier removal, maybe could be in a different function
-            # compute a mean with outliers removed, values that fall outside of 3 std
-            # mean_mean = np.mean(means)
-            # three_std = 2 * np.std(means)
+    TODO fix outlier removal, maybe could be in a different function
+    # compute a mean with outliers removed, values that fall outside of 3 std
+    # mean_mean = np.mean(means)
+    # three_std = 2 * np.std(means)
 
-            # means_no_outliers = [
-            #     mean
-            #     for mean in means
-            #     if mean > mean_mean - three_std and mean < mean_mean + three_std
-            # ]
+    # means_no_outliers = [
+    #     mean
+    #     for mean in means
+    #     if mean > mean_mean - three_std and mean < mean_mean + three_std
+    # ]
     """
 
     def __init__(self, data: Data, df: pd.DataFrame, type: TraceType):
@@ -525,6 +587,7 @@ class Dataset:
                 parse_dates=True,
             ).rename(columns=mapper)
             for state in self.experiment.states
+            if state in self.dataset["states"]
             for device in self.devices
             if include == [] or device.dir_name in include
         }
@@ -651,10 +714,6 @@ def sort_dict_by_value(dict, key=lambda x: x[1], reverse=False):
     return {k: v for k, v in sorted(dict.items(), key=key, reverse=reverse)}
 
 
-# def intervalise(metric):
-#     return pd.Interval(min(metric), max(metric))
-
-
 def my_colormesh(fig, ax, x, y, c):
     cmap = "BuPu"
     im = ax.pcolormesh(
@@ -665,136 +724,61 @@ def my_colormesh(fig, ax, x, y, c):
         shading="nearest",
         edgecolors="grey",
         linewidths=0.1,
+        vmin=0,
+        vmax=1,
     )
-    ax.tick_params("x", rotation=90)
 
     bar = fig.colorbar(im, ax=ax, orientation="vertical")
     ticks = np.linspace(0, 1, 11)
     bar.set_ticks(ticks=ticks, labels=map(lambda x: f"{x:.0%}", ticks))
 
 
-def graph_confusion_matrix(exp: Experiment):
-    # TODO better font scaling
+def confused_with(exp: Experiment, name: str, state: State) -> list[Trace]:
+    # return training traces that are confused with the device, and the devices training and testing traces.
+    data = exp.get_data(name, state)
+    confused = list(exp.classes[data].keys())
+    traces = [c.training for c in confused]
+    if data not in confused:
+        traces = [data.training] + traces
+
+    # TODO: ensure device is first
+    traces = [data.testing] + traces
+    return traces
+
+
+def plot_metrics(exp: Experiment, to_plot: list[Trace], log_scale=False):
+    if len(exp.metrics) > 1:
+        raise ValueError
+
     fig, ax = plt.subplots()
-    rows, cols = np.shape(exp.confusion_matrix)
-    # TODO name datasets here
-    names = [
-        repr(data) if len(exp.states) > 1 else data.device.name()
-        for dataset in exp.datasets
-        for data in dataset.data
-    ]
-    matrix = exp.confusion_matrix
-    vert_names = names[::-1]
-    if exp.threshold is not None:
-        matrix = matrix[: rows - 1, :cols]
-        names = names + ["Unknown"]
-        rows -= 1
-    my_colormesh(
-        fig,
-        ax,
-        names,
-        vert_names,
-        matrix,
-    )
 
-    for i in range(rows):
-        for j in range(cols):
-            share = matrix[i][j]
-            if share != 0:
-                colour = "black"
-                if share > 0.45:
-                    colour = "white"
-                ax.text(
-                    j,
-                    rows - i - 1,
-                    f"{share*100:.0f}",
-                    fontsize=4 if rows > 30 else 8,
-                    # f"{share:.0%}",
-                    # fontsize=n / 11,
-                    ha="center",
-                    va="center",
-                    color=colour,
-                )
+    n = len(to_plot)
+    for i, trace in enumerate(to_plot):
+        metric = [profile[exp.metrics[0]] for profile in trace.profile]
+        colour = ColorHash((trace)).hex
+        ax.scatter(
+            metric,
+            [n - i] * len(trace.profile),
+            label=f"{trace.data.device.name()} {trace.type}",
+            c=colour,
+        )
+        if trace.type == TraceType.TRAINING:
+            ax.scatter(np.median(metric), n - i, marker="|", c=colour, s=200)
+    if log_scale:
+        ax.set_xscale("log")
 
-    ax.set_ylabel("True Class")
-    ax.set_xlabel("Predicted Class")
-    # ax.set_title(
-    # f"state={exp.state}, metric={exp.metric.fancy_name()}, w = {exp.w}, s = {exp.s}"
-    # )
-    ax.tick_params(axis="both", labelsize=7 if rows > 30 else 11)
-    # fig.set_dpi(400)
-    # fig.
-    filename = f"../generated/confusion-matrix-{'-'.join(exp.states)}-{exp.w}-{exp.s}-{"-".join(exp.metrics)}-{exp.classify_by}.pdf"
-    fig.savefig(filename, bbox_inches="tight")
+    ax.set_ylim((0, n + 1))
+    ax.legend(loc="center right", bbox_to_anchor=(0, 0.5))
+    ax.set_yticks([])
+    fig.set_figheight(n / 4)
 
+    ax.set_xlabel("Power (W)")
 
-# """
-# Assuming sorted lists, return the number of non overlapping intervals
-
-# >>> overlap(([1, 3], [2, 4], [10, 20]))
-# 1
-# """
-# def overlap(intervals, metrics):
-#     # TODO: look at multiple metrics here
-#     independents = 0
-#     for i, interval in enumerate(intervals):
-#         independent = True
-#         for j, compare in enumerate(intervals):
-#             if i != j:
-#                 overlaps = 0
-#                 for metric in metrics:
-#                     if interval[metric][0] <= compare[metric][-1] and compare[metric][0] <= interval[metric][-1]:
-#                         overlaps += 1
-#                 if overlaps == len(metrics):
-#                     independent = False
-#         if independent:
-#             independents += 1
-
-#     return independents
-
-
-# def compute_overlap(data, samples, offset, metrics=['mean']):
-#     results = {device: compute_profile(df, samples, offset) for device, (df, _) in data.items()}
-#     return overlap(results.values(), metrics)
-
-
-#  #| label: colourmesh
-
-# """
-# Find overlapping intervals, return the number of non-overlapping intervals and the total amount of overlap.
-
-# A faster algorithm would place all on same numberline, then it's like the brackets problem. n log n
-# Do naive n^2 algo for now.
-
-# For 2d overlaps, do both? Any overlap counts.
-
-# >>> overlap_intervals((pd.Interval(left=1, right=3), pd.Interval(left=2, right=4), pd.Interval(left=10, right=20)))
-# 1
-# """
-# def overlap_intervals(intervals, metrics=['mean']):
-#     # TODO: look at multiple metrics here
-#     for i in range(len(metrics)):
-#         pass
-#     # compare the two metrics for the same thing
-
-#     independents = 0
-#     for i, interval in enumerate(intervals):
-#         independent = True
-#         for j, compare in enumerate(intervals):
-#             if i != j:
-#                 if interval.overlaps(compare):
-#                     independent = False
-#         if independent:
-#             independents += 1
-
-#     return independents
 
 if __name__ == "__main__":
     import doctest
 
-    # doctest.FAIL_FAST = True
-    # doctest.NORMALIZE_WHITESPACE = True
-    exp = Experiment(
+    self = Experiment(
         ["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10
     )
 

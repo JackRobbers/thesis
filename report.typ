@@ -427,6 +427,7 @@ As discussed above, the reliability of results from the SafeNetIoT dataset is li
 - combine with network
 - disaggregation @raikerEnergyDisaggregationUsing2021
 - more sophisticated measurement
+- monte carlo to optimise, tune weight of features
 
 = Bibliography
 

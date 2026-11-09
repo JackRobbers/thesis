@@ -59,7 +59,7 @@
 
       Existing literature focuses on network traffic, but this struggles with "quiet" devices.
 
-      Power is a constant signal that can provide. Research in fields
+      Power provides constant information about the internal state of a device.
     ])),
 
     grid.cell(colspan: 3, rowspan: 2, container([
@@ -88,13 +88,22 @@
     grid.cell(colspan: 3, rowspan: 2, container([
       = Evaluation #contribution([3])
 
+      == Profiling individual devices
       #align(center)[
         #table_image("evaluation", width: 100%)
         // #scale-to-container(image("generated/confusion-matrix-idle-150-100-mean-std-Median.pdf"), width: 100%)
       ]
+
+      Other features including frequency
+
+      == Classifying by state
+
+      == Portability of classes
     ])),
     grid.cell(colspan: 3, container([
-      = Conclusion
+      = Conclusions
+
+      IoT Devices can be
     ])),
   ))))
 ]

@@ -13,9 +13,10 @@ datasets:
         categories: ["lights", "audio", "camera", "tv", "appliance"],
         exclude: ["echodot3"], # doesn't have enough data
         cols: ["timestamp", power_mW],
+        states: ["idle", "active"], # states contained in the data, expects {state}.csv to be present
       },
     ? "My Data" # structure is /device/state_time.csv
-    : { path: "data", cols: ["time", Power_mW] },
+    : { path: "data", cols: ["time", Power_mW], states: ["idle"] },
     ? "Raw Data" # doesn't actually work, used by the filter script to make the /data folder
     : { path: "raw_data" },
   }

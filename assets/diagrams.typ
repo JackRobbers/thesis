@@ -120,7 +120,7 @@
 
     let big_circle = 0.2
 
-    let class(center, scale_x, scale_y, colour) = {
+    let class(center, scale_x, scale_y, colour, body) = {
       let n = 20
       let rng = gen-rng-f(42)
 
@@ -161,13 +161,13 @@
           fill: eval(colour).lighten(50%),
         )
       }
-      content((rel: (0, 0.3), to: "rect.north"), text(size: 0.5em, [device]))
+      content((rel: (0, 0.3), to: "rect.north"), text(size: 0.5em, body))
       circle((x_med, y_med), name: str(colour), radius: big_circle, fill: eval(colour), stroke: 1pt + white)
     }
 
-    class((3.2, 3), 3, 1.5, "red")
-    class((2, 0.1), 3, 1.1, "orange")
-    class((0.1, 2), 3, 3, "fuchsia")
+    class((3.2, 3), 3, 1.5, "red", [Google Home, Idle])
+    class((2, 0.1), 3, 1.1, "orange", [Google Home, Idle])
+    class((0.1, 2), 3, 3, "fuchsia", [Google Home, Idle])
 
     circle((2.5, 3), radius: big_circle, fill: black, name: "new")
     set-style(stroke: (dash: "solid"))

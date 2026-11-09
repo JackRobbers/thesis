@@ -1,9 +1,10 @@
 # move the longest datasets to data/device/idle.csv
-from util import *
+from experiment import Experiment, State, Metric, Classifier
 from pathlib import Path
 import os
 import pandas as pd
 import shutil
+from os import path
 
 c = Experiment(["Raw Data"], [State.IDLE], [Metric.MEAN], Classifier.Median).datasets[0]
 
