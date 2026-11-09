@@ -5,7 +5,7 @@ import os
 import pandas as pd
 import shutil
 
-c = Context("Raw Data")
+c = Experiment(["Raw Data"], [State.IDLE], [Metric.MEAN], Classifier.Median).datasets[0]
 
 device_to_files = {device: os.listdir(c.path / device.dir_name) for device in c.devices}
 

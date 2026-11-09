@@ -5,7 +5,7 @@ from functools import partial
 from matplotlib import ticker
 from util import *
 
-c = Context("../PowerIDS/classifier/power_csv")
+c = Dataset("../PowerIDS/classifier/power_csv")
 common = partial(
     Experiment,
     c,

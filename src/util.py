@@ -43,6 +43,287 @@ class Metric(StrEnum):
                 return self.value
 
 
+class Experiment:
+    """
+    >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10)
+    >>> exp.datasets[0].devices.pop()
+    Xiaomi Blender
+    >>> len(exp.datasets[0].devices) # previously Dataset and Exp were disconnected so this had the opposite behaviour
+    31
+
+    >>> len(exp.datasets[0].data)
+    32
+
+    >>> all(['power_mW' in data.training.df.columns for dataset in exp.datasets for data in dataset.data])
+    True
+
+    >>> all(['power_mW' in data.testing.df.columns for dataset in exp.datasets for data in dataset.data])
+    True
+
+    Filtering
+    >>> len(Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori']).datasets[0].devices)
+    3
+
+    """
+
+    def __init__(
+        self,
+        datasets: list[str],
+        states: list[State],
+        metrics: list[Metric],
+        classify_by: Classifier,
+        w=None,
+        s=None,
+        threshold=None,
+        include=[],
+    ):
+        with open(Path(__file__).parent / "../common.yaml") as f:
+            self.config = yaml.safe_load(f)
+        self.states: list[State] = states
+        self.metrics = metrics
+        self.classify_by = classify_by
+        self.w: int = self.config["w"] if w is None else w
+        if self.w > 600:
+            raise ValueError(self.w)
+        self.s: int = self.config["s"] if s is None else s
+        self.threshold = threshold
+        self.datasets = [Dataset(dataset, self, include) for dataset in datasets]
+
+        self.classes = self.classify_data()
+        self.confusion_matrix = self.compute_confusion_matrix()
+        self.f1_scores, self.precision, unknown = self.compute_scores()
+        if self.threshold is None:
+            assert all([x == 0 for x in unknown.values()])
+        self.unknown = unknown
+        self.f1_macro_average = sum(self.f1_scores.values()) / len(self.f1_scores)
+
+    def __repr__(self):
+        return f"{"-".join(map(str, self.datasets))}-{"-".join(self.states)}_{"-".join(self.metrics)}_{self.classify_by}_{self.w}_{self.s}"
+
+    def classify_data(self: Experiment):
+        """
+        for each of the testing datasets in an experiment, predict the device they are based on the training data
+
+        # are all the lengths the same?
+        >>> len(set([v.total() for v in exp.classes.values()]))
+        1
+
+        >>> exp.f1_macro_average
+        np.float64(0.742989379804219)
+
+        >>> fft1 = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.FFT], Classifier.Median, 600, 100)
+        >>> fft1.f1_macro_average
+        np.float64(0.7083333333333334)
+        >>> fft = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 600, 100)
+        >>> fft.f1_macro_average
+        np.float64(0.7083333333333334)
+        >>> fft = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN, Metric.STD], Classifier.Median, 600, 100)
+        >>> fft.f1_macro_average
+        np.float64(0.8145833333333333)
+        >>> fft = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN, Metric.STD, Metric.FFT], Classifier.Median, 600, 100)
+        >>> fft.f1_macro_average
+        np.float64(0.7083333333333334)
+
+        """
+        if self.classify_by == Classifier.Median:
+            training_profiles = {
+                data: {
+                    metric: np.median(
+                        [point[metric] for point in data.training.profile]
+                    )
+                    for metric in self.metrics
+                }
+                for dataset in self.datasets
+                for data in dataset.data
+            }
+        elif self.classify_by == Classifier.Centroid:
+            # device: {"std": centroid_std, "mean": centroid_mean}
+            training_profiles = {
+                data: {
+                    metric: sum([point[metric] for point in data.training.profile])
+                    / len(data.training.profile)
+                    for metric in self.metrics
+                }
+                for dataset in self.datasets
+                for data in dataset.data
+            }
+        else:
+            raise ValueError(self.classify_by)
+
+        testing_profiles = {
+            data: data.testing.profile
+            for dataset in self.datasets
+            for data in dataset.data
+        }
+        matches: dict[Data, Counter[Data]] = {}
+        for dev_state, testing_profile in testing_profiles.items():
+            closest: list[Data] = []
+
+            # find the closest training point for this
+            # loop over all the testing windows
+            for window_to_classify in testing_profile:
+                # closest_prediction = None
+                # dist = np.inf
+                dists = list(
+                    islice(
+                        sort_dict_by_value(
+                            {
+                                predicted: np.sqrt(
+                                    np.sum(
+                                        [
+                                            (
+                                                window_to_classify[metric]
+                                                - training[metric]
+                                            )
+                                            ** 2
+                                            for metric in self.metrics
+                                        ]
+                                    )
+                                )
+                                for predicted, training in training_profiles.items()
+                            }
+                        ).items(),
+                        2,
+                    )
+                )
+
+                # TODO way to report dists / ratios?
+                # ratio should judge the relative size. a smaller threshold means we allow closer together values
+                # guranteed dist[0] < dist[1]. lets say 2x as big, then dist[1] / dist[0] = 2.
+                #
+
+                if (
+                    self.threshold is None
+                    or (dists[1][1] / dists[0][1] if dists[0][1] != 0 else 0)
+                    >= self.threshold
+                ):
+                    closest.append(dists[0][0])
+
+                # can get the number of expected classes later from list
+
+            matches[dev_state] = Counter(closest)
+
+        return matches
+
+    def compute_confusion_matrix(self):
+        """
+        compute the confusion matrix using the given classes
+
+        >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp.confusion_matrix # doctest: +NORMALIZE_WHITESPACE
+        array([[0.76666667, 0.        , 0.23333333],
+           [0.        , 1.        , 0.        ],
+           [0.        , 0.        , 1.        ]])
+        >>> exp.classes # doctest: +NORMALIZE_WHITESPACE
+        {<Apple TV, idle>: Counter({<Apple TV, idle>: 46, <Cosori Air Fryer, idle>: 14}), <Samsung 32" TV, idle>: Counter({<Samsung 32" TV, idle>: 60}), <Cosori Air Fryer, idle>: Counter({<Cosori Air Fryer, idle>: 60})}
+
+        threshold
+        >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 150, 100, threshold = 2, include=['appletv', 'samsungtv', 'cosori'])
+        >>> len(exp.datasets[0].devices)
+        3
+        >>> len(exp.f1_scores)
+        3
+
+
+        make sure we don't add None to the data
+        >>> len(exp.datasets[0].data)
+        3
+        >>> exp.classes
+        {<Apple TV, idle>: Counter({<Apple TV, idle>: 5, <Cosori Air Fryer, idle>: 1}), <Samsung 32" TV, idle>: Counter({<Samsung 32" TV, idle>: 7}), <Cosori Air Fryer, idle>: Counter({<Cosori Air Fryer, idle>: 7})}
+        >>> exp.confusion_matrix # doctest: +NORMALIZE_WHITESPACE
+        array([[0.83333333, 0.        , 0.16666667, 0.14285714],
+           [0.        , 1.        , 0.        , 0.        ],
+           [0.        , 0.        , 1.        , 0.        ],
+           [0.        , 0.        , 0.        , 0.        ]])
+
+        two states
+        # >>> exp = Experiment(["SafeNetIoT"], [State.IDLE, State.ACTIVE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        # >>> exp.classes
+        # {(Apple TV, idle): Counter({(Apple TV, idle): 42, (Cosori Air Fryer, idle): 14}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, active): 45, (Samsung 32" TV, idle): 11}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 56}), (Apple TV, active): Counter({(Apple TV, active): 56}), (Samsung 32" TV, active): Counter({(Samsung 32" TV, idle): 56}), (Cosori Air Fryer, active): Counter({(Cosori Air Fryer, active): 56})}
+        # >>> exp.confusion_matrix
+        """
+        n = sum(len(dataset.data) for dataset in self.datasets)
+
+        # add another
+        if self.threshold is not None:
+            n = n + 1
+
+        matrix = np.zeros((n, n))
+        for i, class_ in enumerate(self.classes.values()):
+            for data, count in class_.items():
+
+                # look up what position the data would be in a combined list
+                j = [data for dataset in self.datasets for data in dataset.data].index(
+                    data
+                )
+
+                classes = len(data.testing.profile)
+
+                share = count / class_.total()
+                # share = count / classes
+                matrix[i][j] = share
+
+                if self.threshold is not None:
+                    matrix[i][-1] = (classes - class_.total()) / classes
+
+        return matrix
+
+    def compute_scores(self):
+        """
+        f1 score for each thing
+
+        not easy to convert into a list comprehension due to the variables and control flow
+
+        >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
+        >>> exp.f1_scores
+        {<Apple TV, idle>: np.float64(0.8679245283018868), <Samsung 32" TV, idle>: np.float64(1.0), <Cosori Air Fryer, idle>: np.float64(0.8955223880597015)}
+        """
+
+        f1_scores: dict[Data, float] = {}
+        precision_scores: dict[Data, float] = {}
+        unknown_rate: dict[Data, float] = {}
+        all_data = [data for dataset in self.datasets for data in dataset.data]
+        n = len(self.confusion_matrix)
+        if self.threshold is not None:
+            # don't count the unknown row
+            n -= 1
+            for i, data in enumerate(all_data):
+                val = self.confusion_matrix[i, -1]
+                unknown_rate[data] = val
+        else:
+            for i in range(n):
+                unknown_rate[all_data[i]] = 0
+
+        for i in range(n):
+            tp = self.confusion_matrix[i, i]
+            fp: float = 0
+            fn: float = 0
+            for j in range(n):
+                if j != i:
+                    fn += self.confusion_matrix[j, i]
+                    fp += self.confusion_matrix[i, j]
+            f1_scores[all_data[i]] = 0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
+            precision_scores[all_data[i]] = 0 if tp == 0 else tp / (tp + fp)
+
+        return f1_scores, precision_scores, unknown_rate
+
+    def data(self):
+        return [data for dataset in self.datasets for data in dataset.data]
+
+    def devices(self):
+        # warning: assumes all devices exist in all states
+        return [data.device for data in self.data() if data.state == self.states[0]]
+
+    def get_data(self, device: str, state: State):
+        # Warning: will only return the device from the first dataset if there are identically named device in multiple datasets
+        return [
+            data
+            for dataset in self.datasets
+            for data in dataset.data
+            if data.device.dir_name == device and data.state == state
+        ][0]
+
+
 class TraceType(StrEnum):
     TRAINING = "model"
     TESTING = "testing"
@@ -55,48 +336,48 @@ class Trace:
     run all windows, return metrics in the form [{'mean': value, 'std': value}], where the values are sorted
 
     the first window takes up s samples, so there are len(data) - s samples left. each addional window uses up o spaces.
-    >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 10, 2)
-    >>> len(c.devices)
+    >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 10, 2)
+    >>> len(exp.datasets[0].devices)
     32
-    >>> len(exp.devices)
+    >>> len(exp.datasets[0].devices)
     32
-    >>> len(exp.data)
+    >>> len(exp.datasets[0].data)
     32
-    >>> len(Trace(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), TraceType.TRAINING).profile)
+    >>> len(Trace(exp.datasets[0].data[0], pd.DataFrame(data={'power_mW': [1] * 100}), TraceType.TRAINING).profile)
     46
 
     # Additonal partial windows aren't counted
-    >>> len(Trace(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 101}), TraceType.TRAINING).profile)
+    >>> len(Trace(exp.datasets[0].data[0], pd.DataFrame(data={'power_mW': [1] * 101}), TraceType.TRAINING).profile)
     46
 
     Non overlapping windows
-    >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 10, 20)
-    >>> len(exp.devices)
+    >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 10, 20)
+    >>> len(exp.datasets[0].devices)
     32
-    >>> len(exp.data)
+    >>> len(exp.datasets[0].data)
     32
-    >>> len(Trace(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 100}), TraceType.TRAINING).profile)
+    >>> len(Trace(exp.datasets[0].data[0], pd.DataFrame(data={'power_mW': [1] * 100}), TraceType.TRAINING).profile)
     5
 
-    >>> Trace(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 50 + [2] * 50}), TraceType.TRAINING).profile # doctest: +NORMALIZE_WHITESPACE
+    >>> Trace(exp.datasets[0].data[0], pd.DataFrame(data={'power_mW': [1] * 50 + [2] * 50}), TraceType.TRAINING).profile # doctest: +NORMALIZE_WHITESPACE
     [{<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.float64(0.01)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.float64(0.01)}, {<Metric.MEAN: 'mean'>: np.float64(0.0010000000000000002), <Metric.STD: 'std'>: np.float64(2.28569887277129e-19), <Metric.FFT: 'fft'>: np.float64(0.01)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.float64(0.02)}, {<Metric.MEAN: 'mean'>: np.float64(0.0020000000000000005), <Metric.STD: 'std'>: np.float64(4.57139774554258e-19), <Metric.FFT: 'fft'>: np.float64(0.02)}]
 
-    >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 400, 10)
-    >>> len(Trace(exp.data[0], pd.DataFrame(data={'power_mW': [1] * 1750}), TraceType.TRAINING).profile)
+    >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 400, 10)
+    >>> len(Trace(exp.datasets[0].data[0], pd.DataFrame(data={'power_mW': [1] * 1750}), TraceType.TRAINING).profile)
     136
 
-    >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 400, 10)
+    >>> exp = Experiment(["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 400, 10)
 
     Are all the profiles the same length?
 
-    >>> len(exp.devices)
+    >>> len(exp.datasets[0].devices)
     32
-    >>> len(exp.data)
+    >>> len(exp.datasets[0].data)
     32
 
-    >>> [len(data.training.profile) for data in exp.data]
+    >>> [len(data.training.profile) for data in exp.datasets[0].data]
     [111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111, 111]
-    >>> [len(data.testing.profile) for data in exp.data]
+    >>> [len(data.testing.profile) for data in exp.datasets[0].data]
     [38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38, 38]
 
     TODO do we want non rectangular windows? are edge effects important
@@ -119,12 +400,16 @@ class Trace:
         self.type = type
         self.profile: list[dict[Metric, float]] = []
         for bin in range(
-            (len(self.df) - self.data.experiment.w) // self.data.experiment.s + 1
+            (len(self.df) - self.data.dataset.experiment.w)
+            // self.data.dataset.experiment.s
+            + 1
         ):
             window_power = (
                 self.df.iloc[
-                    bin * self.data.experiment.s : bin * self.data.experiment.s
-                    + self.data.experiment.w
+                    bin
+                    * self.data.dataset.experiment.s : bin
+                    * self.data.dataset.experiment.s
+                    + self.data.dataset.experiment.w
                 ].power_mW
                 / 1000
             )
@@ -139,16 +424,18 @@ class Trace:
 
 class Data:
     """
-    >>> [len(data.training.df) for data in exp.data]
+    >>> [len(data.training.df) for dataset in exp.datasets for data in dataset.data]
     [1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500, 1500]
 
 
-    >>> [len(data.testing.df) for data in exp.data]
+    >>> [len(data.testing.df) for dataset in exp.datasets for data in dataset.data]
     [778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778, 778]
     """
 
-    def __init__(self, exp: Experiment, device: Device, state: State, df: pd.DataFrame):
-        self.experiment = exp
+    def __init__(
+        self, dataset: Dataset, device: Device, state: State, df: pd.DataFrame
+    ):
+        self.dataset = dataset
         self.device = device
         self.state = state
         if device.dir_name == "nestmini2":
@@ -166,38 +453,40 @@ class Data:
         return f"<{self.device}, {self.state}>"
 
 
-class Context:
+class Dataset:
     """
     Get all the devices and categories.
 
-    Hard coded to remove echodot3 since the idle data is truncated and can't be compared
-    >>> len(c.devices)
+    >>> len(exp.datasets[0].devices)
     32
 
-    >>> c.categories
+    >>> exp.datasets[0].categories
     ['lights', 'audio', 'camera', 'tv', 'appliance']
 
 
-    >>> c.devices[:5]
+    >>> exp.datasets[0].devices[:5]
     [Antela Light, Fitop Light, LIFX Light, Lepro Light, Tapo Light]
 
     My data
-    >>> my = Context("My Data")
-    >>> len(my.devices)
+    >>> my = Experiment(["My Data"], [State.IDLE], [Metric.MEAN], Classifier.Median)
+    >>> len(my.datasets[0].devices)
     6
 
     """
 
-    def __init__(
-        self,
-        dataset_name: str,
-    ):
-        self.dataset_name = dataset_name
+    def __init__(self, name: str, exp: Experiment, include: list[str] = []):
+        self.name = name
+        self.experiment = exp
         file_path = Path(__file__).parent
         with open(file_path / "../common.yaml") as f:
-            self.config = yaml.safe_load(f)
-        self.dataset = self.config["datasets"][dataset_name]
+            config = yaml.safe_load(f)
+        self.dataset = config["datasets"][name]
         self.path = file_path / ".." / self.dataset["path"]
+
+        device_filter = lambda device: (
+            "exclude" not in self.dataset or device not in self.dataset["exclude"]
+        ) and (include == [] or device in include)
+
         if "categories" in self.dataset:
             cat_key = lambda cat: self.dataset["categories"].index(cat)
 
@@ -207,8 +496,7 @@ class Context:
                     Device(device, category)
                     for category in self.categories
                     for device in listdir(f"{self.path}/{category}")
-                    if "exclude" not in self.dataset
-                    or device not in self.dataset["exclude"]
+                    if device_filter(device)
                     if path.isdir(f"{self.path}/{category}/{device}")
                 ],
                 key=lambda device: (
@@ -221,12 +509,35 @@ class Context:
                 [
                     Device(device, None)
                     for device in listdir(self.path)
-                    if "exclude" not in self.dataset
-                    or device not in self.dataset["exclude"]
+                    if device_filter(device)
                     if path.isdir(f"{self.path}/{device}")
                 ],
                 key=lambda device: device.name(),
             )
+
+        mapper = {
+            col: ["timestamp", "power_mW"][i]
+            for i, col in enumerate(self.dataset["cols"])
+        }
+        dfs = {
+            (device, state): pd.read_csv(
+                self.path / device.path / device.dir_name / f"{state}.csv",
+                parse_dates=True,
+            ).rename(columns=mapper)
+            for state in self.experiment.states
+            for device in self.devices
+            if include == [] or device.dir_name in include
+        }
+
+        # truncate the data to the shortest one
+        least = min([len(df) for df in dfs.values()])
+        self.data: list[Data] = [
+            Data(self, device, state, df.iloc[:least, :])
+            for (device, state), df in dfs.items()
+        ]
+
+    def __str__(self):
+        return self.name
 
     def device_from_name(self, device_name):
         return [device for device in self.devices if device.dir_name == device_name][0]
@@ -331,303 +642,6 @@ class Classifier(StrEnum):
     Centroid = "Centroid"
 
 
-class Experiment:
-    """
-    Verify the new devices are seperate
-
-    >>> context = Context("SafeNetIoT")
-    >>> exp = Experiment(context, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10)
-
-    >>> context.devices.pop()
-    Xiaomi Blender
-    >>> len(exp.devices)
-    32
-
-    >>> len(exp.data)
-    32
-
-    >>> all(['power_mW' in data.training.df.columns for data in exp.data])
-    True
-
-    >>> all(['power_mW' in data.testing.df.columns for data in exp.data])
-    True
-
-    Filtering
-    >>> len(Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori']).devices)
-    3
-
-    """
-
-    def __init__(
-        self,
-        context: Context,
-        states: list[State],
-        metrics: list[Metric],
-        classify_by: Classifier,
-        w=None,
-        s=None,
-        threshold=None,
-        include=[],
-    ):
-        self.context = context
-        self.states: list[State] = states
-        self.metrics = metrics
-        self.classify_by = classify_by
-        self.w: int = context.config["w"] if w is None else w
-        if self.w > 600:
-            raise ValueError(self.w)
-        self.s: int = context.config["s"] if s is None else s
-
-        self.threshold = threshold
-
-        if include == []:
-            include = list(map(lambda device: device.dir_name, context.devices))
-        self.devices = [
-            device for device in context.devices if device.dir_name in include
-        ]
-        official_cols = ["timestamp", "power_mW"]
-        mapper = {
-            col: official_cols[i] for i, col in enumerate(self.context.dataset["cols"])
-        }
-        dfs = {
-            (device, state): pd.read_csv(
-                self.context.path / device.path / device.dir_name / f"{state}.csv",
-                parse_dates=True,
-            ).rename(columns=mapper)
-            for state in self.states
-            for device in self.devices
-            if device.dir_name in include
-        }
-
-        # truncate the data to the shortest one
-        least = min([len(df) for df in dfs.values()])
-        self.data: list[Data] = [
-            Data(self, device, state, df.iloc[:least, :])
-            for (device, state), df in dfs.items()
-        ]
-
-        self.classes = self.classify_data()
-        self.confusion_matrix = self.compute_confusion_matrix()
-        self.f1_scores, self.precision, unknown = self.compute_scores()
-        if self.threshold is None:
-            assert all([x == 0 for x in unknown.values()])
-        self.unknown = unknown
-        self.f1_macro_average = sum(self.f1_scores.values()) / len(self.f1_scores)
-
-    def __repr__(self):
-        return f"{self.context.dataset_name}-{"-".join(self.states)}_{"-".join(self.metrics)}_{self.classify_by}_{self.w}_{self.s}"
-
-    def classify_data(self: Experiment):
-        """
-        for each of the testing datasets in an experiment, predict the device they are based on the training data
-
-        # are all the lengths the same?
-        >>> len(set([v.total() for v in exp.classes.values()]))
-        1
-
-        >>> exp.f1_macro_average
-        np.float64(0.742989379804219)
-
-        >>> fft1 = Experiment(c, [State.IDLE], [Metric.FFT], Classifier.Median, 600, 100)
-        >>> fft1.f1_macro_average
-        np.float64(0.7083333333333334)
-        >>> fft = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 600, 100)
-        >>> fft.f1_macro_average
-        np.float64(0.7083333333333334)
-        >>> fft = Experiment(c, [State.IDLE], [Metric.MEAN, Metric.STD], Classifier.Median, 600, 100)
-        >>> fft.f1_macro_average
-        np.float64(0.8145833333333333)
-        >>> fft = Experiment(c, [State.IDLE], [Metric.MEAN, Metric.STD, Metric.FFT], Classifier.Median, 600, 100)
-        >>> fft.f1_macro_average
-        np.float64(0.7083333333333334)
-
-        """
-        if self.classify_by == Classifier.Median:
-            training_profiles = {
-                (data.device, data.state): {
-                    metric: np.median(
-                        [point[metric] for point in data.training.profile]
-                    )
-                    for metric in self.metrics
-                }
-                for data in self.data
-            }
-        elif self.classify_by == Classifier.Centroid:
-            # device: {"std": centroid_std, "mean": centroid_mean}
-            training_profiles = {
-                (data.device, data.state): {
-                    metric: sum([point[metric] for point in data.training.profile])
-                    / len(data.training.profile)
-                    for metric in self.metrics
-                }
-                for data in self.data
-            }
-        else:
-            raise ValueError(self.classify_by)
-
-        testing_profiles = {
-            (data.device, data.state): data.testing.profile for data in self.data
-        }
-        matches: dict[tuple[Device, State], Counter[tuple[Device, State]]] = {}
-        for dev_state, testing_profile in testing_profiles.items():
-            closest: list[tuple[Device, State]] = []
-
-            # find the closest training point for this
-            # loop over all the testing windows
-            for window_to_classify in testing_profile:
-                # closest_prediction = None
-                # dist = np.inf
-                dists = list(
-                    islice(
-                        sort_dict_by_value(
-                            {
-                                predicted: np.sqrt(
-                                    np.sum(
-                                        [
-                                            (
-                                                window_to_classify[metric]
-                                                - training[metric]
-                                            )
-                                            ** 2
-                                            for metric in self.metrics
-                                        ]
-                                    )
-                                )
-                                for predicted, training in training_profiles.items()
-                            }
-                        ).items(),
-                        2,
-                    )
-                )
-
-                # TODO way to report dists / ratios?
-                # ratio should judge the relative size. a smaller threshold means we allow closer together values
-                # guranteed dist[0] < dist[1]. lets say 2x as big, then dist[1] / dist[0] = 2.
-                #
-
-                if (
-                    self.threshold is None
-                    or (dists[1][1] / dists[0][1] if dists[0][1] != 0 else 0)
-                    >= self.threshold
-                ):
-                    closest.append(dists[0][0])
-
-                # can get the number of expected classes later from list
-
-            matches[dev_state] = Counter(closest)
-
-        return matches
-
-    def compute_confusion_matrix(self):
-        """
-        compute the confusion matrix using the given classes
-
-        >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
-        >>> exp.confusion_matrix # doctest: +NORMALIZE_WHITESPACE
-        array([[0.76666667, 0.        , 0.23333333],
-           [0.        , 1.        , 0.        ],
-           [0.        , 0.        , 1.        ]])
-        >>> exp.classes # doctest: +NORMALIZE_WHITESPACE
-        {(Apple TV, idle): Counter({(Apple TV, idle): 46, (Cosori Air Fryer, idle): 14}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, idle): 60}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 60})}
-
-        threshold
-        >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 150, 100, threshold = 2, include=['appletv', 'samsungtv', 'cosori'])
-        >>> len(exp.devices)
-        3
-        >>> len(exp.f1_scores)
-        3
-
-
-        make sure we don't add None to the data
-        >>> len(exp.data)
-        3
-        >>> exp.classes
-        {(Apple TV, idle): Counter({(Apple TV, idle): 5, (Cosori Air Fryer, idle): 1}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, idle): 7}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 7})}
-        >>> exp.confusion_matrix # doctest: +NORMALIZE_WHITESPACE
-        array([[0.83333333, 0.        , 0.16666667, 0.14285714],
-           [0.        , 1.        , 0.        , 0.        ],
-           [0.        , 0.        , 1.        , 0.        ],
-           [0.        , 0.        , 0.        , 0.        ]])
-
-        two states
-        # >>> exp = Experiment(c, [State.IDLE, State.ACTIVE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
-        # >>> exp.classes
-        # {(Apple TV, idle): Counter({(Apple TV, idle): 42, (Cosori Air Fryer, idle): 14}), (Samsung 32" TV, idle): Counter({(Samsung 32" TV, active): 45, (Samsung 32" TV, idle): 11}), (Cosori Air Fryer, idle): Counter({(Cosori Air Fryer, idle): 56}), (Apple TV, active): Counter({(Apple TV, active): 56}), (Samsung 32" TV, active): Counter({(Samsung 32" TV, idle): 56}), (Cosori Air Fryer, active): Counter({(Cosori Air Fryer, active): 56})}
-        # >>> exp.confusion_matrix
-        """
-        n = len(self.data)
-
-        # add another
-        if self.threshold is not None:
-            n = n + 1
-
-        matrix = np.zeros((n, n))
-        for i, class_ in enumerate(self.classes.values()):
-            for (device, state), count in class_.items():
-                data, j = self.get_data(device, state)
-                classes = len(data.testing.profile)
-
-                share = count / class_.total()
-                # share = count / classes
-                matrix[i][j] = share
-
-                if self.threshold is not None:
-                    matrix[i][-1] = (classes - class_.total()) / classes
-
-        return matrix
-
-    def compute_scores(self):
-        """
-        f1 score for each thing
-
-        not easy to convert into a list comprehension due to the variables and control flow
-
-        >>> exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10, include=['appletv', 'samsungtv', 'cosori'])
-        >>> exp.f1_scores
-        {<Apple TV, idle>: np.float64(0.8679245283018868), <Samsung 32" TV, idle>: np.float64(1.0), <Cosori Air Fryer, idle>: np.float64(0.8955223880597015)}
-        """
-
-        f1_scores: dict[Data, float] = {}
-        precision_scores: dict[Data, float] = {}
-        unknown_rate: dict[Data, float] = {}
-        n = len(self.confusion_matrix)
-        if self.threshold is not None:
-            # don't count the unknown row
-            n -= 1
-            for i in range(n):
-                val = self.confusion_matrix[i, -1]
-                unknown_rate[self.data[i]] = val
-        else:
-            for i in range(n):
-                unknown_rate[self.data[i]] = 0
-
-        for i in range(n):
-            tp = self.confusion_matrix[i, i]
-            fp: float = 0
-            fn: float = 0
-            for j in range(n):
-                if j != i:
-                    fn += self.confusion_matrix[j, i]
-                    fp += self.confusion_matrix[i, j]
-            # print(n, tp, fp)
-            f1_scores[self.data[i]] = 0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
-            precision_scores[self.data[i]] = 0 if tp == 0 else tp / (tp + fp)
-
-        return f1_scores, precision_scores, unknown_rate
-
-    def get_device(self, name: str) -> Device:
-        for device in self.devices:
-            if device.nice_name == name or device.dir_name == name:
-                return device
-        raise ValueError(name)
-
-    def get_data(self, device, state) -> tuple[Data, int]:
-        for i, data in enumerate(self.data):
-            if data.device == device and data.state == state:
-                return data, i
-        raise ValueError(device, state)
-
-
 def sort_dict_by_value(dict, key=lambda x: x[1], reverse=False):
     """
     >>> sort_dict_by_value({'a': 2, 'b': 3, 'c': 1})
@@ -663,9 +677,11 @@ def graph_confusion_matrix(exp: Experiment):
     # TODO better font scaling
     fig, ax = plt.subplots()
     rows, cols = np.shape(exp.confusion_matrix)
+    # TODO name datasets here
     names = [
-        repr(exp.data) if len(exp.states) > 1 else data.device.name()
-        for data in exp.data
+        repr(data) if len(exp.states) > 1 else data.device.name()
+        for dataset in exp.datasets
+        for data in dataset.data
     ]
     matrix = exp.confusion_matrix
     vert_names = names[::-1]
@@ -778,8 +794,9 @@ if __name__ == "__main__":
 
     # doctest.FAIL_FAST = True
     # doctest.NORMALIZE_WHITESPACE = True
-    c = Context("SafeNetIoT")
-    exp = Experiment(c, [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10)
+    exp = Experiment(
+        ["SafeNetIoT"], [State.IDLE], [Metric.MEAN], Classifier.Median, 180, 10
+    )
 
     print("Running tests")
 
