@@ -19,15 +19,19 @@
 }
 
 #let container(content) = {
-  show heading.where(level: 1): set text(weight: "bold", size: 36pt, font: "Arial GEO")
+  show heading.where(level: 1): set text(weight: "bold", size: 36pt, font: "Arial GEO", fill: black)
+  show heading.where(level: 2): it => {
+    set text(size: 30pt, font: "Arial GEO", fill: black)
+    emph(it)
+  }
 
   set text(weight: "regular", size: 24pt, font: "Arial")
   box(content, width: 100%, height: 100%, inset: 1em, stroke: 0.5em + rgb("#b9cde5"), radius: 20pt)
   // box(content, inset: 1em, stroke: 0.5em + rgb("#b9cde5"), radius: 20pt)
-  // content
+  // content, fill: black
 }
 
-#let contribution(content) = { box(stroke: 3pt + unswred2, inset: 0.2em, content) }
+#let contribution(content) = { box(stroke: .1em + black, inset: 0.2em, content) }
 
 #page(paper: "a0", margin: 5pt, background: image("assets/poster_background.pdf"))[
   #place(center, dx: 1cm, dy: 5.5cm, text(size: 100pt, [2026 Thesis Project]))
@@ -75,24 +79,14 @@
 
     ])),
     grid.cell(colspan: 3, rowspan: 2, container([
-      = Data #contribution([2.1])
+      = Data
+      // == My Data #contribution([2])
 
 
-      #figure(
-        caption: [Comparison between the existing SafeNetIoT dataset and my dataset. My dataset covers a lot less devices but has more data to make more confident conclusion from.],
-        [
-          #table(
-            columns: 3,
-            bold[Property], bold[SafeNetIoT], bold[My Dataset],
-            [Devices], [32], [6],
-            [Trace length], [\~40 minutes], [78 hours],
-            [Scenarios], [10], [1],
-          )1
-        ],
-      )
+      #table_image("data")
     ])),
     grid.cell(colspan: 3, rowspan: 2, container([
-      = Evaluation
+      = Evaluation #contribution([3])
 
       #align(center)[
         #table_image("evaluation", width: 100%)
