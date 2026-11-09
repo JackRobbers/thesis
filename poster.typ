@@ -51,7 +51,9 @@
       To create a method to efficiently
 
       = Background
-      Complex networks include thousands of devices that stakeholders need to keep track of in asset registry. Knowing more about the network improves security.  Existing literature focuses on network traffic, but this struggles with "quiet" devices.
+      Complex networks include thousands of devices that operators need to keep track of. Knowing more about the network improves security.
+
+      Existing literature focuses on network traffic, but this struggles with "quiet" devices.
 
       Power is a constant signal that can provide. Research in fields
     ])),
